@@ -1,7 +1,7 @@
 Manifest-Version: 1.0
 Bundle-ManifestVersion: 2
 Bundle-Name: Code Improvement Tool
-Bundle-SymbolicName: CodeImpPlugin
+Bundle-SymbolicName: CodeImpPlugin;singleton:=true
 Bundle-Version: 1.0.0.qualifier
 Bundle-Activator: codeimp.Activator
 Require-Bundle: org.eclipse.ui,

@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<?eclipse version="3.4"?>
+<plugin>
+   <extension
+         point="org.eclipse.ui.actionSets">
+      <actionSet
+            id="CodeImpPlugin.actionSet1"
+            label="Code Improvement"
+            visible="true">
+         <menu
+               id="CodeImpPlugin.menu"
+               label="Code Improvement"
+               path="additions">
+            <groupMarker
+                  name="content">
+            </groupMarker>
+            <separator
+                  name="additions">
+            </separator>
+         </menu>
+         <action
+               class="codeimp.CodeImpActionDelegate"
+               id="CodeImpPlugin.action1"
+               label="&amp;Code Improvement"
+               menubarPath="CodeImpPlugin.menu/content"
+               style="push">
+         </action>
+      </actionSet>
+   </extension>
+
+</plugin>
