@@ -23,9 +23,20 @@ public class CodeImpActionDelegate implements IWorkbenchWindowActionDelegate {
 	 */
 	@Override
 	public void run(IAction action) {
-		// TODO Auto-generated method stub
 		MessageDialog.openInformation(window.getShell(),
 				"Have not completed yet", "CodeImp is under construction");
+		
+		// TODO Check Java perspective and editor
+		
+		// TODO Get the selection code
+		
+		// TODO Analyse code smell
+		
+		// TODO Find appropriate improvement for each issue
+		
+		// TODO Display the analysis and suggestion
+		
+		// TODO Change the current code as suggested if user accept the solution
 	}
 
 	/*
@@ -37,8 +48,6 @@ public class CodeImpActionDelegate implements IWorkbenchWindowActionDelegate {
 	 */
 	@Override
 	public void selectionChanged(IAction action, ISelection selection) {
-		// TODO Auto-generated method stub
-
 	}
 
 	/*
@@ -48,8 +57,6 @@ public class CodeImpActionDelegate implements IWorkbenchWindowActionDelegate {
 	 */
 	@Override
 	public void dispose() {
-		// TODO Auto-generated method stub
-
 	}
 
 	/*
@@ -60,7 +67,6 @@ public class CodeImpActionDelegate implements IWorkbenchWindowActionDelegate {
 	 */
 	@Override
 	public void init(IWorkbenchWindow window) {
-		// TODO Auto-generated method stub
 		this.window = window;
 	}
 
