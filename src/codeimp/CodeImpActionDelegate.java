@@ -5,7 +5,11 @@ package codeimp;
 
 import org.eclipse.jface.action.IAction;
 import org.eclipse.jface.dialogs.MessageDialog;
+import org.eclipse.jface.text.TextSelection;
 import org.eclipse.jface.viewers.ISelection;
+import org.eclipse.jface.viewers.ISelectionProvider;
+import org.eclipse.ui.IEditorPart;
+import org.eclipse.ui.IWorkbenchPartSite;
 import org.eclipse.ui.IWorkbenchWindow;
 import org.eclipse.ui.IWorkbenchWindowActionDelegate;
 
@@ -25,17 +29,26 @@ public class CodeImpActionDelegate implements IWorkbenchWindowActionDelegate {
 	public void run(IAction action) {
 		MessageDialog.openInformation(window.getShell(),
 				"Have not completed yet", "CodeImp is under construction");
-		
+
 		// TODO Check Java perspective and editor
-		
-		// TODO Get the selection code
+		String curPerspective = window.getActivePage().getPerspective()
+				.getLabel();
+		if (curPerspective.equals("Java") == false) {
+			MessageDialog.openInformation(window.getShell(),
+					"Checking current perspective ...",
+					"Current version have not support the language.\nCurrent perspective: "
+							+ curPerspective);
+			return;
+		}
+
+		// TODO Get the selected code in the current editor
 		
 		// TODO Analyse code smell
-		
+
 		// TODO Find appropriate improvement for each issue
-		
+
 		// TODO Display the analysis and suggestion
-		
+
 		// TODO Change the current code as suggested if user accept the solution
 	}
 
