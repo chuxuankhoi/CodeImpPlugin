@@ -4,10 +4,12 @@
    <extension
          point="org.eclipse.ui.actionSets">
       <actionSet
+            description="Remove code smell"
             id="CodeImpPlugin.actionSet1"
             label="Code Improvement"
             visible="true">
          <menu
+               icon="icons/no-smell.png"
                id="CodeImpPlugin.menu"
                label="Code Improvement"
                path="additions">
@@ -20,10 +22,13 @@
          </menu>
          <action
                class="codeimp.CodeImpActionDelegate"
+               icon="icons/no-smell.png"
                id="CodeImpPlugin.action1"
                label="&amp;Code Improvement"
                menubarPath="CodeImpPlugin.menu/content"
-               style="push">
+               style="push"
+               toolbarPath="Normal/additions"
+               tooltip="Remove code smell">
          </action>
       </actionSet>
    </extension>
