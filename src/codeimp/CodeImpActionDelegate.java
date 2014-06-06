@@ -51,6 +51,8 @@ public class CodeImpActionDelegate implements IWorkbenchWindowActionDelegate {
 		// TODO Find appropriate improvement for each issue
 
 		// TODO Display the analysis and suggestion
+		ConfirmationDlg dlg = new ConfirmationDlg(window);
+		dlg.open();
 
 		// TODO Change the current code as suggested if user accept the solution
 	}
