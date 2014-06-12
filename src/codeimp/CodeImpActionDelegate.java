@@ -3,12 +3,13 @@
  */
 package codeimp;
 
+import java.util.ArrayList;
 import org.eclipse.core.resources.IFile;
 import org.eclipse.core.runtime.IProgressMonitor;
 import org.eclipse.core.runtime.NullProgressMonitor;
 import org.eclipse.jdt.core.ICompilationUnit;
+import org.eclipse.jdt.core.IField;
 import org.eclipse.jdt.core.IJavaElement;
-import org.eclipse.jdt.core.IParent;
 import org.eclipse.jdt.core.JavaCore;
 import org.eclipse.jdt.core.JavaModelException;
 import org.eclipse.jdt.core.refactoring.IJavaRefactorings;
@@ -35,7 +36,22 @@ import org.eclipse.ui.IWorkbenchWindowActionDelegate;
  */
 public class CodeImpActionDelegate implements IWorkbenchWindowActionDelegate {
 	IWorkbenchWindow window = null;
-	IFile file = null;
+	IFile curEditorFile = null;
+	ITextSelection textSelection = null;
+
+	private class RefactoringPair {
+		public IJavaElement element;
+		public String action; // get from IJavaRefactorings
+		public Object addition;
+
+		public RefactoringPair(IJavaElement elem, String act, Object add) {
+			element = elem;
+			action = act;
+			addition = add;
+		}
+	}
+
+	ArrayList<RefactoringPair> smellElements;
 
 	/*
 	 * (non-Javadoc)
@@ -56,49 +72,121 @@ public class CodeImpActionDelegate implements IWorkbenchWindowActionDelegate {
 		}
 
 		// Check opening file to make sure that it is a java file
-		file = getCurrentEditorFile();
-		if (!file.getFileExtension().equals("java")) {
+		getCurrentEditorFile();
+		if (!curEditorFile.getFileExtension().equals("java")) {
 			MessageDialog.openInformation(window.getShell(),
 					"Checking file extension ...",
 					"Current version have not support the file extension.");
 		}
 
 		// Get the selected code in the current editor
-		String selectedCode = getSelectedCode();
-		if (selectedCode.isEmpty()) {
+		getSelectedCode();
+		if (textSelection.getText().equals("")) {
 			MessageDialog.openInformation(window.getShell(),
 					"Getting selected text ...", "No text is selected.");
 			return;
 		}
 
 		// Print current status of the selected code
-		System.out.println("Selected Code: " + selectedCode);
+		System.out.println("Selected Code: " + textSelection.getText());
 		System.out.println("Language: Java");
-		System.out.println("File: " + file.getName());
-		System.out.println("Project: " + file.getProject().getName());
+		System.out.println("File: " + curEditorFile.getName());
+		System.out.println("Project: " + curEditorFile.getProject().getName());
 
-		// TODO Analyse code smell
-
-		// TODO Display the analysis and confirm the changed blocks
-		// ConfirmationDlg dlg = new ConfirmationDlg(window);
-		// dlg.open();
-
-		// TODO Call refactoring module to change the code
-		ICompilationUnit cu = JavaCore.createCompilationUnitFrom(file);
-		// Find the type of the selected code in the file
-		int selectedCodeType = findCodeType(selectedCode, cu);
-		IJavaElement selectedCodeElement = findCodeElement(selectedCode, cu);
-
-		if (selectedCodeElement == null) {
+		// Extract selected code to find IJavaElements
+		IJavaElement[] extractedResults = null;
+		try {
+			extractedResults = extractSelectedCode();
+		} catch (JavaModelException e) {
+			e.printStackTrace();
 			return;
 		}
+		if (extractedResults == null) {
+			MessageDialog.openInformation(window.getShell(),
+					"Extracting selected text ...", "Fail to extract code.");
+			return;
+		}
+		if (extractedResults.length == 0) {
+			MessageDialog.openInformation(window.getShell(),
+					"Extracting selected text ...", "No element found.");
+			return;
+		}
+		System.out.println("Number of elements found: " + extractedResults.length);
+
+		// TODO Analyse code smell and build smellElements - JDeodorant or
+		// FindBugs
+		if (smellElements == null)
+			smellElements = new ArrayList<RefactoringPair>();
+		if (extractedResults[0] instanceof IField) {
+			RefactoringPair refactoringElem = new RefactoringPair(
+					extractedResults[0], IJavaRefactorings.RENAME_FIELD,
+					"newName");			
+			smellElements.add(refactoringElem);
+		}
+
+		// TODO Display the analysis and confirm the changed blocks - Eclipse
+		// facility
+
+		// Call refactoring module to change the code
+		for (RefactoringPair pair : smellElements) {
+			refactorElement(pair);
+		}
+
+		// Clean refactored items
+		smellElements.clear();
+	}
+
+	private IJavaElement[] extractSelectedCode() throws JavaModelException {
+		ArrayList<IJavaElement> retList = new ArrayList<IJavaElement>();
+
+		// Extract code and recognize the elements
+		ICompilationUnit cu = JavaCore.createCompilationUnitFrom(curEditorFile);
+		String sourceCode = cu.getSource();
+		String selectedCode = textSelection.getText();
+		String[] words = selectedCode.split("[ \t\\x0b\n(){}'\";,.]");
+		int oldOffset = textSelection.getOffset();
+		int offset = 0;
+		int length = 0;
+		for (String word : words) {
+			if(word.equals(""))
+				continue;
+			offset = sourceCode.indexOf(word, oldOffset);
+			length = word.length();
+			IJavaElement[] elements = cu.codeSelect(offset, length);
+			for (IJavaElement element : elements) {
+				retList.add(element);
+			}
+			oldOffset = offset;
+		}
+
+		// Return found array
+		IJavaElement[] retArray = new IJavaElement[retList.size()];
+		retList.toArray(retArray);
+		return retArray;
+	}
+
+	/**
+	 * @param pair
+	 */
+	private void refactorElement(RefactoringPair pair) {
+		if (pair == null) {
+			return;
+		}
+		if (pair.element == null || pair.action == null
+				|| pair.addition == null) {
+			MessageDialog.openInformation(window.getShell(), "Refactoring ...",
+					"Error when creating pair.");
+			return;
+		}
+		System.out.println("Refator " + pair.element.getElementName() + " by "
+				+ pair.action);
 		RefactoringContribution contribution = RefactoringCore
-				.getRefactoringContribution(IJavaRefactorings.RENAME_FIELD);
+				.getRefactoringContribution(pair.action);
 		RenameJavaElementDescriptor descriptor = (RenameJavaElementDescriptor) contribution
 				.createDescriptor();
-		descriptor.setProject(file.getProject().getName());
-		descriptor.setNewName("testRefactoring");
-		descriptor.setJavaElement(selectedCodeElement);
+		descriptor.setProject(curEditorFile.getProject().getName());
+		descriptor.setNewName((String) pair.addition);
+		descriptor.setJavaElement(pair.element);
 
 		RefactoringStatus status = new RefactoringStatus();
 		try {
@@ -122,7 +210,7 @@ public class CodeImpActionDelegate implements IWorkbenchWindowActionDelegate {
 		return false;
 	}
 
-	private IFile getCurrentEditorFile() {
+	private void getCurrentEditorFile() {
 		IFile curFile = null;
 		IEditorPart editorPart = window.getActivePage().getActiveEditor();
 		if (editorPart != null) {
@@ -130,16 +218,16 @@ public class CodeImpActionDelegate implements IWorkbenchWindowActionDelegate {
 					.getEditorInput();
 			curFile = input.getFile();
 		}
-		return curFile;
+		curEditorFile = curFile;
 	}
 
-	private String getSelectedCode() {
+	private void getSelectedCode() {
 		IWorkbenchPartSite site = window.getPartService().getActivePart()
 				.getSite();
 		if (site == null) {
 			MessageDialog.openInformation(window.getShell(),
 					"Getting selected text ...", "No workbench part site.");
-			return "";
+			return;
 		}
 		ISelectionProvider provider;
 		ISelection selection;
@@ -147,69 +235,22 @@ public class CodeImpActionDelegate implements IWorkbenchWindowActionDelegate {
 		if (provider == null) {
 			MessageDialog.openInformation(window.getShell(),
 					"Getting selected text ...", "No selection provider.");
-			return "";
+			return;
 		}
 		selection = provider.getSelection();
 		if (selection == null) {
 			MessageDialog.openInformation(window.getShell(),
 					"Getting selected text ...", "No selection is get.");
-			return "";
+			return;
 		}
 		if (!(selection instanceof ITextSelection)) {
 			MessageDialog.openInformation(window.getShell(),
 					"Getting selected text ...", "No text selection is get.");
-			return "";
+			return;
 		}
-		ITextSelection ts = (ITextSelection) selection;
-		return ts.getText();
+		textSelection = (ITextSelection) selection;
 	}
 
-	private int findCodeType(String code, IJavaElement element) {
-		if (element.getElementName().equals(code)) {
-			return element.getElementType();
-		}
-		// try to cast the element to IParent to find deeper
-		try {
-			IParent parent = (IParent) element;
-			IJavaElement[] elements = parent.getChildren();
-			System.out.println("Number of children: " + elements.length);
-			for (IJavaElement e : elements) {
-				int ret = findCodeType(code, e);
-				if (ret != 0) {
-					return ret;
-				}
-			}
-		} catch (JavaModelException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		} catch (Exception e) {
-			e.printStackTrace();
-		}
-
-		return 0;
-	}
-
-	private IJavaElement findCodeElement(String code, IJavaElement element) {
-		if(element.getElementName().equals(code)) {
-			return element;
-		}
-		try {
-			IParent parent = (IParent) element;
-			IJavaElement[] elements = parent.getChildren();
-			for (IJavaElement e : elements) {
-				IJavaElement ret = findCodeElement(code, e);
-				if (ret != null) {
-					return ret;
-				}
-			}
-		} catch (JavaModelException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		} catch (Exception e) {
-			e.printStackTrace();
-		}
-		return null;
-	}
 	/*
 	 * (non-Javadoc)
 	 * 
