@@ -13,6 +13,7 @@ import org.eclipse.jdt.core.IJavaElement;
 import org.eclipse.jdt.core.JavaCore;
 import org.eclipse.jdt.core.JavaModelException;
 import org.eclipse.jdt.core.refactoring.IJavaRefactorings;
+import org.eclipse.jdt.core.refactoring.descriptors.JavaRefactoringDescriptor;
 import org.eclipse.jdt.core.refactoring.descriptors.RenameJavaElementDescriptor;
 import org.eclipse.jface.action.IAction;
 import org.eclipse.jface.dialogs.MessageDialog;
@@ -39,6 +40,12 @@ public class CodeImpActionDelegate implements IWorkbenchWindowActionDelegate {
 	IFile curEditorFile = null;
 	ITextSelection textSelection = null;
 
+	/**
+	 * Pair of IJavaElement and action which are used to refactor the element
+	 * 
+	 * @author chuxuankhoi
+	 * 
+	 */
 	private class RefactoringPair {
 		public IJavaElement element;
 		public String action; // get from IJavaRefactorings
@@ -87,12 +94,6 @@ public class CodeImpActionDelegate implements IWorkbenchWindowActionDelegate {
 			return;
 		}
 
-		// Print current status of the selected code
-		System.out.println("Selected Code: " + textSelection.getText());
-		System.out.println("Language: Java");
-		System.out.println("File: " + curEditorFile.getName());
-		System.out.println("Project: " + curEditorFile.getProject().getName());
-
 		// Extract selected code to find IJavaElements
 		IJavaElement[] extractedResults = null;
 		try {
@@ -111,7 +112,8 @@ public class CodeImpActionDelegate implements IWorkbenchWindowActionDelegate {
 					"Extracting selected text ...", "No element found.");
 			return;
 		}
-		System.out.println("Number of elements found: " + extractedResults.length);
+		System.out.println("Number of elements found: "
+				+ extractedResults.length);
 
 		// TODO Analyse code smell and build smellElements - JDeodorant or
 		// FindBugs
@@ -120,7 +122,7 @@ public class CodeImpActionDelegate implements IWorkbenchWindowActionDelegate {
 		if (extractedResults[0] instanceof IField) {
 			RefactoringPair refactoringElem = new RefactoringPair(
 					extractedResults[0], IJavaRefactorings.RENAME_FIELD,
-					"newName");			
+					"newName");
 			smellElements.add(refactoringElem);
 		}
 
@@ -148,7 +150,7 @@ public class CodeImpActionDelegate implements IWorkbenchWindowActionDelegate {
 		int offset = 0;
 		int length = 0;
 		for (String word : words) {
-			if(word.equals(""))
+			if (word.equals(""))
 				continue;
 			offset = sourceCode.indexOf(word, oldOffset);
 			length = word.length();
@@ -182,11 +184,8 @@ public class CodeImpActionDelegate implements IWorkbenchWindowActionDelegate {
 				+ pair.action);
 		RefactoringContribution contribution = RefactoringCore
 				.getRefactoringContribution(pair.action);
-		RenameJavaElementDescriptor descriptor = (RenameJavaElementDescriptor) contribution
-				.createDescriptor();
-		descriptor.setProject(curEditorFile.getProject().getName());
-		descriptor.setNewName((String) pair.addition);
-		descriptor.setJavaElement(pair.element);
+		JavaRefactoringDescriptor descriptor = createDescriptor(
+				pair, contribution);
 
 		RefactoringStatus status = new RefactoringStatus();
 		try {
@@ -199,6 +198,69 @@ public class CodeImpActionDelegate implements IWorkbenchWindowActionDelegate {
 		} catch (Exception e) {
 			e.printStackTrace();
 		}
+	}
+
+	/**
+	 * Depend on the action user expected, the function creates a descriptor 
+	 * which contains enough information for the refactoring
+	 * @param pair
+	 * @param contribution
+	 * @return
+	 */
+	private JavaRefactoringDescriptor createDescriptor(RefactoringPair pair,
+			RefactoringContribution contribution) {
+		JavaRefactoringDescriptor descriptor;
+		descriptor = (JavaRefactoringDescriptor) contribution.createDescriptor();
+		// next lines are essential for any refactoring
+		descriptor.setProject(curEditorFile.getProject().getName());
+		
+		// following lines depend on the specific refactoring
+		switch (pair.action) {
+		case IJavaRefactorings.RENAME_FIELD:
+		case IJavaRefactorings.RENAME_LOCAL_VARIABLE:
+		case IJavaRefactorings.RENAME_COMPILATION_UNIT:
+		case IJavaRefactorings.RENAME_ENUM_CONSTANT:
+		case IJavaRefactorings.RENAME_JAVA_PROJECT:
+		case IJavaRefactorings.RENAME_METHOD:
+		case IJavaRefactorings.RENAME_PACKAGE:
+		case IJavaRefactorings.RENAME_SOURCE_FOLDER:
+		case IJavaRefactorings.RENAME_TYPE:
+		case IJavaRefactorings.RENAME_TYPE_PARAMETER:
+			((RenameJavaElementDescriptor) descriptor).setJavaElement(pair.element);
+			((RenameJavaElementDescriptor) descriptor).setNewName((String) pair.addition);
+			break;
+		case IJavaRefactorings.CHANGE_METHOD_SIGNATURE:
+		case IJavaRefactorings.CONVERT_ANONYMOUS:
+		case IJavaRefactorings.CONVERT_LOCAL_VARIABLE:
+		case IJavaRefactorings.CONVERT_MEMBER_TYPE:
+		case IJavaRefactorings.COPY:
+		case IJavaRefactorings.DELETE:
+		case IJavaRefactorings.ENCAPSULATE_FIELD:
+		case IJavaRefactorings.EXTRACT_CLASS:
+		case IJavaRefactorings.EXTRACT_CONSTANT:
+		case IJavaRefactorings.EXTRACT_INTERFACE:
+		case IJavaRefactorings.EXTRACT_LOCAL_VARIABLE:
+		case IJavaRefactorings.EXTRACT_METHOD:
+		case IJavaRefactorings.EXTRACT_SUPERCLASS:
+		case IJavaRefactorings.GENERALIZE_TYPE:
+		case IJavaRefactorings.INFER_TYPE_ARGUMENTS:
+		case IJavaRefactorings.INLINE_CONSTANT:
+		case IJavaRefactorings.INLINE_LOCAL_VARIABLE:
+		case IJavaRefactorings.INLINE_METHOD:
+		case IJavaRefactorings.INTRODUCE_FACTORY:
+		case IJavaRefactorings.INTRODUCE_INDIRECTION:
+		case IJavaRefactorings.INTRODUCE_PARAMETER:
+		case IJavaRefactorings.INTRODUCE_PARAMETER_OBJECT:
+		case IJavaRefactorings.MOVE:
+		case IJavaRefactorings.MOVE_METHOD:
+		case IJavaRefactorings.MOVE_STATIC_MEMBERS:
+		case IJavaRefactorings.PULL_UP:
+		case IJavaRefactorings.PUSH_DOWN:
+		default:
+			break;
+		}
+		
+		return descriptor;
 	}
 
 	private boolean isPerspective(String expectedPerspective) {
