@@ -4,16 +4,23 @@
 package codeimp;
 
 import java.util.ArrayList;
+import java.util.List;
+
 import org.eclipse.core.resources.IFile;
+import org.eclipse.core.resources.IResource;
 import org.eclipse.core.runtime.IProgressMonitor;
 import org.eclipse.core.runtime.NullProgressMonitor;
 import org.eclipse.jdt.core.ICompilationUnit;
-import org.eclipse.jdt.core.IField;
 import org.eclipse.jdt.core.IJavaElement;
+import org.eclipse.jdt.core.IMember;
+import org.eclipse.jdt.core.IPackageFragment;
+import org.eclipse.jdt.core.IPackageFragmentRoot;
 import org.eclipse.jdt.core.JavaCore;
 import org.eclipse.jdt.core.JavaModelException;
 import org.eclipse.jdt.core.refactoring.IJavaRefactorings;
+import org.eclipse.jdt.core.refactoring.descriptors.ExtractClassDescriptor;
 import org.eclipse.jdt.core.refactoring.descriptors.JavaRefactoringDescriptor;
+import org.eclipse.jdt.core.refactoring.descriptors.MoveDescriptor;
 import org.eclipse.jdt.core.refactoring.descriptors.RenameJavaElementDescriptor;
 import org.eclipse.jface.action.IAction;
 import org.eclipse.jface.dialogs.MessageDialog;
@@ -31,6 +38,8 @@ import org.eclipse.ui.IWorkbenchPartSite;
 import org.eclipse.ui.IWorkbenchWindow;
 import org.eclipse.ui.IWorkbenchWindowActionDelegate;
 
+import de.tobject.findbugs.builder.WorkItem;
+
 /**
  * @author chuxuankhoi
  * 
@@ -39,24 +48,7 @@ public class CodeImpActionDelegate implements IWorkbenchWindowActionDelegate {
 	IWorkbenchWindow window = null;
 	IFile curEditorFile = null;
 	ITextSelection textSelection = null;
-
-	/**
-	 * Pair of IJavaElement and action which are used to refactor the element
-	 * 
-	 * @author chuxuankhoi
-	 * 
-	 */
-	private class RefactoringPair {
-		public IJavaElement element;
-		public String action; // get from IJavaRefactorings
-		public Object addition;
-
-		public RefactoringPair(IJavaElement elem, String act, Object add) {
-			element = elem;
-			action = act;
-			addition = add;
-		}
-	}
+	IJavaElement[] extractedResults = null;
 
 	ArrayList<RefactoringPair> smellElements;
 
@@ -80,22 +72,28 @@ public class CodeImpActionDelegate implements IWorkbenchWindowActionDelegate {
 
 		// Check opening file to make sure that it is a java file
 		getCurrentEditorFile();
+		if (curEditorFile == null) {
+			MessageDialog.openInformation(window.getShell(),
+					"Checking file extension ...", "No editor is opened.");
+			return;
+		}
 		if (!curEditorFile.getFileExtension().equals("java")) {
 			MessageDialog.openInformation(window.getShell(),
 					"Checking file extension ...",
 					"Current version have not support the file extension.");
+			return;
 		}
 
 		// Get the selected code in the current editor
 		getSelectedCode();
-		if (textSelection.getText().equals("")) {
+		if (textSelection == null || textSelection.getText().equals("")) {
 			MessageDialog.openInformation(window.getShell(),
 					"Getting selected text ...", "No text is selected.");
 			return;
 		}
 
 		// Extract selected code to find IJavaElements
-		IJavaElement[] extractedResults = null;
+		extractedResults = null;
 		try {
 			extractedResults = extractSelectedCode();
 		} catch (JavaModelException e) {
@@ -115,15 +113,12 @@ public class CodeImpActionDelegate implements IWorkbenchWindowActionDelegate {
 		System.out.println("Number of elements found: "
 				+ extractedResults.length);
 
-		// TODO Analyse code smell and build smellElements - JDeodorant or
-		// FindBugs
-		if (smellElements == null)
-			smellElements = new ArrayList<RefactoringPair>();
-		if (extractedResults[0] instanceof IField) {
-			RefactoringPair refactoringElem = new RefactoringPair(
-					extractedResults[0], IJavaRefactorings.RENAME_FIELD,
-					"newName");
-			smellElements.add(refactoringElem);
+		// Analyse code smell and build smellElements - FindBugs
+		smellElements = (ArrayList<RefactoringPair>) getSmellElements();
+		if (smellElements == null) {
+			MessageDialog.openInformation(window.getShell(),
+					"Analysing for smell", "No problem.");
+			return;
 		}
 
 		// TODO Display the analysis and confirm the changed blocks - Eclipse
@@ -136,6 +131,35 @@ public class CodeImpActionDelegate implements IWorkbenchWindowActionDelegate {
 
 		// Clean refactored items
 		smellElements.clear();
+	}
+
+	private List<RefactoringPair> getSmellElements() {
+//		if(extractedResults == null || extractedResults.length == 0) {
+//			return null;
+//		}
+		ArrayList<RefactoringPair> returnList;
+//		// Example of pairs
+//		RefactoringPair pair = new RefactoringPair();
+//		pair.element = extractedResults[0];
+//		pair.action = IJavaRefactorings.RENAME_FIELD;
+//		pair.addition = "newName";
+//		if (smellElements == null)
+//			smellElements = new ArrayList<RefactoringPair>();
+//		smellElements.add(pair);
+
+		// get work items in the project
+		List<WorkItem> list = new ArrayList<WorkItem>();
+		list.add(new WorkItem(curEditorFile));
+		IEditorPart editorPart = window.getActivePage().getActiveEditor();
+		CodeImpPlgFindBugsJob runFindBugs = new CodeImpPlgFindBugsJob("Finding bugs in "
+				+ curEditorFile.getName() + "...", curEditorFile, list,
+				editorPart);
+		runFindBugs.scheduleInteractive();
+		returnList = runFindBugs.getReport();
+		
+		// TODO filter the items related to the selected code
+
+		return returnList;
 	}
 
 	private IJavaElement[] extractSelectedCode() throws JavaModelException {
@@ -184,8 +208,8 @@ public class CodeImpActionDelegate implements IWorkbenchWindowActionDelegate {
 				+ pair.action);
 		RefactoringContribution contribution = RefactoringCore
 				.getRefactoringContribution(pair.action);
-		JavaRefactoringDescriptor descriptor = createDescriptor(
-				pair, contribution);
+		JavaRefactoringDescriptor descriptor = createDescriptor(pair,
+				contribution);
 
 		RefactoringStatus status = new RefactoringStatus();
 		try {
@@ -201,8 +225,9 @@ public class CodeImpActionDelegate implements IWorkbenchWindowActionDelegate {
 	}
 
 	/**
-	 * Depend on the action user expected, the function creates a descriptor 
+	 * Depend on the action user expected, the function creates a descriptor
 	 * which contains enough information for the refactoring
+	 * 
 	 * @param pair
 	 * @param contribution
 	 * @return
@@ -210,10 +235,11 @@ public class CodeImpActionDelegate implements IWorkbenchWindowActionDelegate {
 	private JavaRefactoringDescriptor createDescriptor(RefactoringPair pair,
 			RefactoringContribution contribution) {
 		JavaRefactoringDescriptor descriptor;
-		descriptor = (JavaRefactoringDescriptor) contribution.createDescriptor();
+		descriptor = (JavaRefactoringDescriptor) contribution
+				.createDescriptor();
 		// next lines are essential for any refactoring
 		descriptor.setProject(curEditorFile.getProject().getName());
-		
+
 		// following lines depend on the specific refactoring
 		switch (pair.action) {
 		case IJavaRefactorings.RENAME_FIELD:
@@ -226,22 +252,34 @@ public class CodeImpActionDelegate implements IWorkbenchWindowActionDelegate {
 		case IJavaRefactorings.RENAME_SOURCE_FOLDER:
 		case IJavaRefactorings.RENAME_TYPE:
 		case IJavaRefactorings.RENAME_TYPE_PARAMETER:
-			((RenameJavaElementDescriptor) descriptor).setJavaElement(pair.element);
-			((RenameJavaElementDescriptor) descriptor).setNewName((String) pair.addition);
+			RenameJavaElementDescriptor renameDescriptor = (RenameJavaElementDescriptor) descriptor;
+			renameDescriptor.setJavaElement(pair.element);
+			renameDescriptor.setNewName((String) pair.addition);
+			renameDescriptor.setDeprecateDelegate(true);
+			renameDescriptor.setKeepOriginal(false);
+			renameDescriptor.setUpdateReferences(true);
+			renameDescriptor.setUpdateTextualOccurrences(true);
 			break;
 		case IJavaRefactorings.CHANGE_METHOD_SIGNATURE:
+			break;
 		case IJavaRefactorings.CONVERT_ANONYMOUS:
 		case IJavaRefactorings.CONVERT_LOCAL_VARIABLE:
 		case IJavaRefactorings.CONVERT_MEMBER_TYPE:
 		case IJavaRefactorings.COPY:
 		case IJavaRefactorings.DELETE:
 		case IJavaRefactorings.ENCAPSULATE_FIELD:
+			break;
 		case IJavaRefactorings.EXTRACT_CLASS:
+			ExtractClassDescriptor extractClassDescriptor = (ExtractClassDescriptor) descriptor;
+			extractClassDescriptor.setClassName((String) pair.addition);
+			break;
 		case IJavaRefactorings.EXTRACT_CONSTANT:
 		case IJavaRefactorings.EXTRACT_INTERFACE:
 		case IJavaRefactorings.EXTRACT_LOCAL_VARIABLE:
 		case IJavaRefactorings.EXTRACT_METHOD:
+			break;
 		case IJavaRefactorings.EXTRACT_SUPERCLASS:
+			break;
 		case IJavaRefactorings.GENERALIZE_TYPE:
 		case IJavaRefactorings.INFER_TYPE_ARGUMENTS:
 		case IJavaRefactorings.INLINE_CONSTANT:
@@ -251,21 +289,47 @@ public class CodeImpActionDelegate implements IWorkbenchWindowActionDelegate {
 		case IJavaRefactorings.INTRODUCE_INDIRECTION:
 		case IJavaRefactorings.INTRODUCE_PARAMETER:
 		case IJavaRefactorings.INTRODUCE_PARAMETER_OBJECT:
+			break;
 		case IJavaRefactorings.MOVE:
+			MoveDescriptor moveDescriptor = (MoveDescriptor) descriptor;
+			moveDescriptor.setDestination((IJavaElement) pair.addition);
+			moveDescriptor.setUpdateReferences(true);
+			moveDescriptor.setUpdateQualifiedNames(true);
+			if (pair.element instanceof IMember) {
+				IMember[] members = { (IMember) pair.element };
+				moveDescriptor.setMoveMembers(members);
+			} else if (pair.element instanceof IPackageFragmentRoot) {
+				IPackageFragmentRoot[] roots = { (IPackageFragmentRoot) pair.element };
+				moveDescriptor.setMovePackageFragmentRoots(roots);
+			} else if (pair.element instanceof IPackageFragment) {
+				IPackageFragment[] packages = { (IPackageFragment) pair.element };
+				moveDescriptor.setMovePackages(packages);
+			} else if (pair.element instanceof IResource) {
+				// Do not support
+			} else {
+				// Do nothing
+			}
+			break;
 		case IJavaRefactorings.MOVE_METHOD:
+			break;
 		case IJavaRefactorings.MOVE_STATIC_MEMBERS:
+			break;
 		case IJavaRefactorings.PULL_UP:
+			break;
 		case IJavaRefactorings.PUSH_DOWN:
 		default:
 			break;
 		}
-		
+
 		return descriptor;
 	}
 
 	private boolean isPerspective(String expectedPerspective) {
 		String curPerspective = window.getActivePage().getPerspective()
 				.getLabel();
+		if (curPerspective == null) {
+			return false;
+		}
 		if (curPerspective.equals(expectedPerspective)) {
 			return true;
 		}
