@@ -21,9 +21,9 @@ import org.eclipse.swt.widgets.Label;
  * @author chuxuankhoi
  *
  */
-public class ConfirmationDlg extends Dialog {
+public class CodeImpNoteDlg extends Dialog {
 
-	protected ConfirmationDlg(IShellProvider parentShell) {
+	protected CodeImpNoteDlg(IShellProvider parentShell) {
 		super(parentShell);
 	}
 
@@ -75,8 +75,8 @@ public class ConfirmationDlg extends Dialog {
 		Label label = new Label( composite , SWT.None );
 		label.setText("Label 1");
 		FormData lblData = new FormData();
-//		lblData.width = 40;
-//		lblData.height = 20;
+		lblData.width = 40;
+		lblData.height = 40;
 		lblData.left =  new FormAttachment(0, 1000, 6);//x co-ordinate
 		lblData.top =  new FormAttachment(0, 1000, 17);//y co-ordinate
 		label.setLayoutData(lblData);
@@ -88,8 +88,8 @@ public class ConfirmationDlg extends Dialog {
 		Button btn = new Button( composite , SWT.PUSH );
 		btn.setText("Press to close");
 		FormData btnData = new FormData();
-//		btnData.width = 90;
-//		btnData.height = 20;
+		btnData.width = 120;
+		btnData.height = 30;
 		btnData.left = new FormAttachment(0,1000,0);//x co-ordinate
 		btnData.top = new FormAttachment(0,1000,0);//y co-ordinate
 		btn.setLayoutData(btnData);

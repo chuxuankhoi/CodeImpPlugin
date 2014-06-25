@@ -7,7 +7,5 @@
 	<classpathentry kind="lib" path="/usr/lib/eclipse/plugins/org.eclipse.ltk.core.refactoring_3.6.0.dist.jar"/>
 	<classpathentry kind="lib" path="/usr/lib/eclipse/plugins/org.eclipse.core.resources_3.8.1.dist.jar"/>
 	<classpathentry kind="lib" path="/usr/lib/eclipse/plugins/org.eclipse.jdt.core_3.8.2.dist.jar"/>
-	<classpathentry kind="lib" path="lib/findbugs.jar"/>
-	<classpathentry kind="lib" path="/usr/lib/eclipse/plugins/org.eclipse.ui.console_3.5.100.dist.jar"/>
 	<classpathentry kind="output" path="bin"/>
 </classpath>
