@@ -6,14 +6,18 @@ package codeimp;
 import java.util.ArrayList;
 
 import org.eclipse.core.resources.IFile;
+import org.eclipse.core.resources.IProject;
 import org.eclipse.core.resources.IResource;
 import org.eclipse.core.runtime.IProgressMonitor;
 import org.eclipse.core.runtime.NullProgressMonitor;
 import org.eclipse.jdt.core.ICompilationUnit;
+import org.eclipse.jdt.core.IField;
 import org.eclipse.jdt.core.IJavaElement;
 import org.eclipse.jdt.core.IMember;
+import org.eclipse.jdt.core.IMethod;
 import org.eclipse.jdt.core.IPackageFragment;
 import org.eclipse.jdt.core.IPackageFragmentRoot;
+import org.eclipse.jdt.core.IType;
 import org.eclipse.jdt.core.JavaCore;
 import org.eclipse.jdt.core.JavaModelException;
 import org.eclipse.jdt.core.refactoring.IJavaRefactorings;
@@ -33,37 +37,39 @@ import org.eclipse.ui.IWorkbenchWindow;
 /**
  * @author chuxuankhoi
  * 
- * Improve selected code using hill-climbing algorithm
- *
+ *         Improve selected code using hill-climbing algorithm
+ * 
  */
 public class CodeImp {
-	
+
 	protected IWorkbenchWindow window;
 	protected ITextSelection codeSelection;
 	protected IFile sourceFile;
 	protected String[] refactoringHistory;
-	
+
 	protected boolean needStopThread = false;
-	
+
 	public static void printLog(String log) {
 		System.out.println(System.currentTimeMillis() + " - CodeImp - " + log);
 	}
-	
-	public CodeImp(ITextSelection selectedCode, IFile file, IWorkbenchWindow currentWindow) {
+
+	public CodeImp(ITextSelection selectedCode, IFile file,
+			IWorkbenchWindow currentWindow) {
 		codeSelection = selectedCode;
 		sourceFile = file;
 		window = currentWindow;
 	}
-	
+
 	public void runImprovement() {
-		try {			
+		try {
 			double curScore = getCurrentScore();
 			double oldScore = curScore;
 			boolean needMoreImp = true;
-			while(needMoreImp && !needStopThread) {
-				// TODO run improvement over the elements using hill-climbing algorithm
+			while (needMoreImp && !needStopThread) {
+				// TODO run improvement over the elements using hill-climbing
+				// algorithm
 				curScore = getCurrentScore();
-				if(curScore >= oldScore) {
+				if (curScore >= oldScore) {
 					needMoreImp = false;
 				}
 				oldScore = curScore;
@@ -71,48 +77,197 @@ public class CodeImp {
 		} catch (Exception e) {
 			printLog(e.getMessage());
 		}
-		
+
 	}
-	
+
 	public String getRefactoringHistory() {
 		return "";
 	}
-	
+
 	public double getCurrentScore() throws JavaModelException {
-		IJavaElement[] elements = extractSelectedCode();
-		if(elements == null) {
-			System.out.println("No element found.");
+		IJavaElement[] elements = identifyElements(codeSelection.getText(),
+				sourceFile);
+		if (elements == null) {
+			System.out.println("No element found by identifier.");
 			return 0;
 		}
 		double score = 0;
-		for(IJavaElement element:elements) {
-			score += scoreElement(element);
+		for (IJavaElement element : elements) {
+			double elementScore = scoreElement(element);
+			printLog("Element: " + element.getElementName() + " - Type: "
+					+ element.getElementType() + " - Score: " + elementScore);
+			score += elementScore;
 		}
 		return score;
 	}
-	
-	private double scoreElement(IJavaElement element) {
-		// TODO Auto-generated method stub
-		return 0;
+
+	private double scoreElement(IJavaElement element) throws JavaModelException {
+		// TODO Select appropriate scoring function for element based on its
+		// type
+		double score = 0;
+		if (element instanceof IType) {
+			if (isInProject((IType) element, sourceFile.getProject())) {
+				score = scoreLCOM1((IType) element);
+			}
+		}
+
+		return score;
 	}
 
-	private IJavaElement[] extractSelectedCode() throws JavaModelException {
-		if(codeSelection == null || sourceFile == null) {
-			System.out.println("Error when initializing CodeImp instance.");
+	/**
+	 * Check the class is belong to the current project or not. This method is
+	 * important because IJavaElement.getChildren() may get IType instances
+	 * which belong to packages that we don't want to modify
+	 * 
+	 * @param element
+	 * @return
+	 */
+	private boolean isInProject(IType element, IProject project) {
+		String elementLocation = element.getPath().toString();
+		String[] elementPath = elementLocation.split("/");
+		String projectName = project.getName();
+		if (projectName.equals(elementPath[1])) {
+			return true;
+		}
+		return false;
+	}
+
+	/**
+	 * S. R. Chidamber, C. F. Kemerer - A Metrics suite for Object Oriented
+	 * design
+	 * 
+	 * @param element
+	 * @return
+	 * @throws JavaModelException
+	 */
+	private double scoreLCOM1(IType element) throws JavaModelException {
+		// Get fields and method
+		IField[] fields = element.getFields();
+		IMethod[] methods = element.getMethods();
+		int consideredMethodsNum = methods.length; // number of methods which are not main()
+
+		// Get number of pair of independent methods and dependent methods
+		int indMethodsNum = 0; // number of independent pair of methods
+		int depMethodsNum = 0; // number of dependent pair of methods
+		for (int i = 0; i < methods.length; i++) {
+			if (methods[i].isMainMethod()) {
+				consideredMethodsNum--;
+				continue;
+			}
+			for (int j = i + 1; j < methods.length; j++) {
+				if (methods[j].isMainMethod()) {
+					continue;
+				}
+				if (similar(methods[i], methods[j], fields) == 0) {
+					indMethodsNum++;
+				} else {
+					depMethodsNum++;
+				}
+			}
+		}
+		// Calculate LCOM1
+		if (indMethodsNum - depMethodsNum > 0) {
+			return ((double) indMethodsNum - (double) depMethodsNum)
+					/ (double) consideredMethodsNum;
+		} else {
+			return 0;
+		}
+	}
+
+	/**
+	 * Calculate number of fields used by both 2 methods
+	 * @param method1
+	 * @param method2
+	 * @param fields
+	 * @return
+	 * @throws JavaModelException
+	 */
+	private int similar(IMethod method1, IMethod method2, IField[] fields)
+			throws JavaModelException {
+		// Extract fields used in methods
+		IField[] usedFields1 = getFieldsInMethod(method1, fields);
+		IField[] usedFields2 = getFieldsInMethod(method2, fields);
+
+		// Get number of intersections between 2 fields
+		int ret = 0;
+		for (IField f1 : usedFields1) {
+			for (IField f2 : usedFields2) {
+				if (f1.equals(f2)) {
+					ret++;
+				}
+			}
+		}
+
+		return ret;
+	}
+
+	/**
+	 * Extract method to look for the fields used
+	 * @param method1
+	 * @param referentFields
+	 * @throws JavaModelException
+	 */
+	private IField[] getFieldsInMethod(IMethod method, IField[] referentFields)
+			throws JavaModelException {
+		String method1Code = method.getSource();
+		ArrayList<IField> usedField = new ArrayList<IField>();
+		IJavaElement[] elements = identifyElements(method1Code, sourceFile);
+		for (IJavaElement e : elements) {
+			if (!(e instanceof IField))
+				continue;
+			for (IField f : referentFields) {
+				if (((IField) e).equals(f)) {
+					// before getting field, avoid duplicated
+					boolean existed = false;
+					for (int i = 0; i < usedField.size(); i++) {
+						if (e.getElementName().equals(
+								usedField.get(i).getElementName())) {
+							existed = true;
+							break;
+						}
+					}
+					if (!existed) {
+						usedField.add((IField) e);
+					}
+				}
+			}
+		}
+		System.out.println("Number of used fields: " + usedField.size());
+		for (int i = 0; i < usedField.size(); i++) {
+			System.out.println(method.getElementName() + " - \tUsed field: "
+					+ usedField.get(i).getElementName());
+		}
+
+		IField[] retArray = new IField[usedField.size()];
+		usedField.toArray(retArray);
+		return retArray;
+	}
+
+	/**
+	 * Look for IJavaElement instances in the given string.
+	 * The string must be a part of a source file.
+	 * @param code
+	 * @param file
+	 * @return
+	 * @throws JavaModelException
+	 */
+	private IJavaElement[] identifyElements(String code, IFile file)
+			throws JavaModelException {
+		if (code == null || file == null || code.equals("")) {
+			printLog("Error when initializing CodeImp instance.");
 			return null;
 		}
 		ArrayList<IJavaElement> retList = new ArrayList<IJavaElement>();
 
-		// Extract code and recognize the elements
-		ICompilationUnit cu = JavaCore.createCompilationUnitFrom(sourceFile);
+		ICompilationUnit cu = JavaCore.createCompilationUnitFrom(file);
 		String sourceCode = cu.getSource();
-		String selectedCode = codeSelection.getText();
-		if(selectedCode.equals("")) {
-			System.out.println("No selected code.");
+
+		String[] words = code.split("[ \t\\x0b\n(){}'\";,.]");
+		int oldOffset = sourceCode.indexOf(code, 0);
+		if (oldOffset == -1) {
+			printLog("Code seems not be a part of the file");
 			return null;
 		}
-		String[] words = selectedCode.split("[ \t\\x0b\n(){}'\";,.]");
-		int oldOffset = codeSelection.getOffset();
 		int offset = 0;
 		int length = 0;
 		for (String word : words) {
@@ -132,7 +287,7 @@ public class CodeImp {
 		retList.toArray(retArray);
 		return retArray;
 	}
-	
+
 	/**
 	 * @param pair
 	 */
@@ -165,7 +320,7 @@ public class CodeImp {
 			e.printStackTrace();
 		}
 	}
-	
+
 	/**
 	 * Depend on the action user expected, the function creates a descriptor
 	 * which contains enough information for the refactoring
