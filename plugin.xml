@@ -5,7 +5,7 @@
          point="org.eclipse.ui.actionSets">
       <actionSet
             description="Remove code smell"
-            id="CodeImpPlugin.actionSet1"
+            id="CodeImpPlugin.CodeImpActionSets"
             label="Code Improvement"
             visible="true">
          <menu
@@ -23,7 +23,7 @@
          <action
                class="codeimp.CodeImpActionDelegate"
                icon="icons/no-smell.png"
-               id="CodeImpPlugin.action1"
+               id="CodeImpPlugin.CodeImpAct"
                label="&amp;Code Improvement"
                menubarPath="CodeImpPlugin.menu/content"
                style="push"
