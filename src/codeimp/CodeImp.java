@@ -17,6 +17,7 @@ import org.eclipse.jdt.core.IMember;
 import org.eclipse.jdt.core.IMethod;
 import org.eclipse.jdt.core.IPackageFragment;
 import org.eclipse.jdt.core.IPackageFragmentRoot;
+import org.eclipse.jdt.core.ISourceReference;
 import org.eclipse.jdt.core.IType;
 import org.eclipse.jdt.core.JavaCore;
 import org.eclipse.jdt.core.JavaModelException;
@@ -63,8 +64,14 @@ public class CodeImp {
 		try {
 			double curScore = calCurrentScore();
 			double oldScore = curScore;
-			IJavaElement[] refactoredElements = identifyElements(
+			IJavaElement[] scoringElements = identifyElements(
 					codeSelection.getText(), sourceFile);
+			// TODO run for all scoring elements
+			if (!(scoringElements[0] instanceof IType)) {
+				return;
+			}
+			IJavaElement[] refactoredElements = getRefactoredElements(
+					((IType) scoringElements[0]).getSource(), sourceFile);
 			if (refactoredElements == null) {
 				System.out.println("Unexpected returned.");
 				return;
@@ -91,10 +98,39 @@ public class CodeImp {
 					}
 				}
 			}
+			printLog("Improvement completed. Final score: " + curScore);
 		} catch (Exception e) {
 			printLog(e.toString());
 		}
 
+	}
+
+	private IJavaElement[] getRefactoredElements(String source, IFile file)
+			throws JavaModelException {
+		// TODO Auto-generated method stub
+		ArrayList<IJavaElement> refactoredElements = new ArrayList<IJavaElement>();
+		IJavaElement[] rootElements = identifyElements(source, file);
+		for (IJavaElement e : rootElements) {
+			if (isInProject(e, file.getProject())) {
+				refactoredElements.add(e);
+				if (e instanceof ISourceReference) {
+					IJavaElement[] childElements = getRefactoredElements(
+							((ISourceReference) e).getSource(), file);
+					for (IJavaElement ce : childElements) {
+						refactoredElements.add(ce);
+					}
+				}
+			}
+		}
+
+		if (refactoredElements.size() > 0) {
+			IJavaElement[] retArray = new IJavaElement[refactoredElements
+					.size()];
+			refactoredElements.toArray(retArray);
+			return retArray;
+		} else {
+			return null;
+		}
 	}
 
 	private String[] getActionsList(IJavaElement iJavaElement) {
@@ -284,8 +320,9 @@ public class CodeImp {
 		double score = 0;
 		for (IJavaElement element : elements) {
 			double elementScore = scoreElement(element);
-			printLog("calCurrentScore - Element: " + element.getElementName() + " - Type: "
-					+ element.getElementType() + " - Score: " + elementScore);
+			printLog("calCurrentScore - Element: " + element.getElementName()
+					+ " - Type: " + element.getElementType() + " - Score: "
+					+ elementScore);
 			score += elementScore;
 		}
 		return score;
@@ -309,11 +346,13 @@ public class CodeImp {
 	 * important because IJavaElement.getChildren() may get IType instances
 	 * which belong to packages that we don't want to modify
 	 * 
-	 * @param element
+	 * @param e
 	 * @return
 	 */
-	private boolean isInProject(IType element, IProject project) {
-		String elementLocation = element.getPath().toString();
+	private boolean isInProject(IJavaElement e, IProject project) {
+		String elementLocation = e.getPath().toString();
+		System.out.println("Element " + e.getElementName() + ": path: "
+				+ elementLocation);
 		String[] elementPath = elementLocation.split("/");
 		String projectName = project.getName();
 		if (projectName.equals(elementPath[1])) {
