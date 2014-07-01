@@ -77,11 +77,14 @@ public class CodeImp {
 							sourceFile.getProject());
 					refactoring.process(undoMan);
 					curScore = calCurrentScore();
-					if (curScore > oldScore) {
+					if (curScore < oldScore) {
 						oldScore = curScore;
-						break;
+						continue;
 					} else {
 						undoMan.performUndo(null, null);
+						if(curScore > oldScore) {
+							break;
+						}
 					}
 				}
 			}
