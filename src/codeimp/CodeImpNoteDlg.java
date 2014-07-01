@@ -43,10 +43,10 @@ public class CodeImpNoteDlg extends Dialog {
 			e.printStackTrace();
 		}
 		
-		// TODO Set dialog dimensions
+		// Set dialog dimensions
 		composite.getShell().setSize(800, 600);
 		
-		// TODO Set dialog positions
+		// Set dialog positions
 		setDialogLocation();
 		
 		return composite;

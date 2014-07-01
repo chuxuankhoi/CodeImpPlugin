@@ -3,7 +3,6 @@
  */
 package codeimp;
 
-import java.util.ArrayList;
 import org.eclipse.core.resources.IFile;
 import org.eclipse.jdt.core.IJavaElement;
 import org.eclipse.jface.action.IAction;
@@ -26,8 +25,6 @@ public class CodeImpActionDelegate implements IWorkbenchWindowActionDelegate {
 	IFile curEditorFile = null;
 	ITextSelection textSelection = null;
 	IJavaElement[] extractedResults = null;
-
-	ArrayList<RefactoringPair> smellElements;
 
 	/*
 	 * (non-Javadoc)
@@ -70,14 +67,14 @@ public class CodeImpActionDelegate implements IWorkbenchWindowActionDelegate {
 		}
 
 		// Run the improvement
-		CodeImp improvementJob = new CodeImp(textSelection, curEditorFile, window);
+		CodeImp improvementJob = new CodeImp(textSelection, curEditorFile,
+				window);
 		improvementJob.runImprovement();
 
-		// TODO Display the analysis and confirm the changed blocks - Eclipse
-		// facility
+		// Display the analysis and confirm the changed blocks
+		System.out.println("Refactoring used: ");
 		System.out.println(improvementJob.getRefactoringHistory());
-
-		
+		System.out.println("Code improvement completed.");
 	}
 
 	private boolean isPerspective(String expectedPerspective) {

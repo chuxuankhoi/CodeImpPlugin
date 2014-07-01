@@ -2,7 +2,7 @@
  * Original: org.eclipse.core.commands.operations.DefaultOperationHistory
  * Remove undo confirmation in doUndo()
  */
-package codeimp;
+package codeimp.undo;
 
 import java.util.ArrayList;
 import java.util.Collections;

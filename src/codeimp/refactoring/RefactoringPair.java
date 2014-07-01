@@ -4,7 +4,7 @@
  * @author chuxuankhoi
  * 
  */
-package codeimp;
+package codeimp.refactoring;
 
 import org.eclipse.jdt.core.IJavaElement;
 
