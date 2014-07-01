@@ -4,12 +4,15 @@
 package codeimp;
 
 import java.util.ArrayList;
+import java.util.List;
 
 import org.eclipse.core.resources.IFile;
 import org.eclipse.core.resources.IProject;
 import org.eclipse.core.resources.IResource;
+import org.eclipse.core.runtime.CoreException;
 import org.eclipse.core.runtime.IProgressMonitor;
 import org.eclipse.core.runtime.NullProgressMonitor;
+import org.eclipse.core.runtime.SubProgressMonitor;
 import org.eclipse.jdt.core.ICompilationUnit;
 import org.eclipse.jdt.core.IField;
 import org.eclipse.jdt.core.IJavaElement;
@@ -29,6 +32,7 @@ import org.eclipse.jdt.core.refactoring.descriptors.RenameJavaElementDescriptor;
 import org.eclipse.jface.dialogs.MessageDialog;
 import org.eclipse.jface.text.ITextSelection;
 import org.eclipse.ltk.core.refactoring.Change;
+import org.eclipse.ltk.core.refactoring.IUndoManager;
 import org.eclipse.ltk.core.refactoring.Refactoring;
 import org.eclipse.ltk.core.refactoring.RefactoringContribution;
 import org.eclipse.ltk.core.refactoring.RefactoringCore;
@@ -46,6 +50,7 @@ public class CodeImp {
 	protected IWorkbenchWindow window;
 	protected ITextSelection codeSelection;
 	protected IFile sourceFile;
+	protected IUndoManager undoMan;
 
 	protected ArrayList<String> refactoringHistory = new ArrayList<String>();
 
@@ -62,16 +67,12 @@ public class CodeImp {
 
 	public void runImprovement() {
 		try {
+//			undoMan = RefactoringCore.getUndoManager();
+			undoMan = new CodeImpUndoManager();
 			double curScore = calCurrentScore();
 			double oldScore = curScore;
-			IJavaElement[] scoringElements = identifyElements(
-					codeSelection.getText(), sourceFile);
-			// TODO run for all scoring elements
-			if (!(scoringElements[0] instanceof IType)) {
-				return;
-			}
 			IJavaElement[] refactoredElements = getRefactoredElements(
-					((IType) scoringElements[0]).getSource(), sourceFile);
+					codeSelection.getText(), sourceFile);
 			if (refactoredElements == null) {
 				System.out.println("Unexpected returned.");
 				return;
@@ -79,6 +80,12 @@ public class CodeImp {
 			if (refactoredElements.length == 0) {
 				System.out.println("No item identified.");
 				return;
+			}
+			System.out.println("Refatored elements:");
+			for (int i = 0; i < refactoredElements.length; i++) {
+				System.out.println("\t"
+						+ refactoredElements[i].getElementName() + " - "
+						+ refactoredElements[i].getElementType());
 			}
 
 			for (int i = 0; i < refactoredElements.length; i++) {
@@ -88,34 +95,38 @@ public class CodeImp {
 				}
 				for (int j = 0; j < actionList.length; j++) {
 					tryRefactoring(refactoredElements[i], actionList[j]);
-					System.out.println("Get here.");
 					curScore = calCurrentScore();
 					if (curScore > oldScore) {
 						oldScore = curScore;
 						break;
 					} else {
-						// TODO undo refactoring
+						undoMan.performUndo(null, null);
 					}
 				}
 			}
 			printLog("Improvement completed. Final score: " + curScore);
 		} catch (Exception e) {
-			printLog(e.toString());
+			e.printStackTrace();
 		}
 
 	}
 
 	private IJavaElement[] getRefactoredElements(String source, IFile file)
 			throws JavaModelException {
-		// TODO Auto-generated method stub
 		ArrayList<IJavaElement> refactoredElements = new ArrayList<IJavaElement>();
 		IJavaElement[] rootElements = identifyElements(source, file);
 		for (IJavaElement e : rootElements) {
 			if (isInProject(e, file.getProject())) {
-				refactoredElements.add(e);
-				if (e instanceof ISourceReference) {
-					IJavaElement[] childElements = getRefactoredElements(
-							((ISourceReference) e).getSource(), file);
+				if (e instanceof IMethod && ((IMethod) e).isMainMethod()) {
+					continue;
+				}
+				if (indexOfValue(refactoredElements, e.getElementName()) == -1) {
+					refactoredElements.add(e);
+					IJavaElement[] childElements = getJElementTreeElements(e,
+							file);
+					if (childElements == null) {
+						continue;
+					}
 					for (IJavaElement ce : childElements) {
 						refactoredElements.add(ce);
 					}
@@ -133,11 +144,65 @@ public class CodeImp {
 		}
 	}
 
+	private int indexOfValue(List<IJavaElement> list, String elementName) {
+		for (IJavaElement e : list) {
+			if (e.getElementName().equals(elementName)) {
+				return list.indexOf(e);
+			}
+		}
+		return -1;
+	}
+
+	private IJavaElement[] getJElementTreeElements(IJavaElement root, IFile file)
+			throws JavaModelException {
+		ArrayList<IJavaElement> treeElements = new ArrayList<IJavaElement>();
+		IJavaElement[] childElements = null;
+		if (root instanceof IType) {
+			childElements = ((IType) root).getChildren();
+		} else if (root instanceof ISourceReference) {
+			String rootSource = ((ISourceReference) root).getSource();
+			childElements = identifyElements(rootSource, file);
+		} else {
+			return null;
+		}
+		if (childElements == null) {
+			return null;
+		}
+		for (IJavaElement ce : childElements) {
+			if (!isInProject(ce, file.getProject())) {
+				continue;
+			}
+			if (ce instanceof IMethod && ((IMethod) ce).isMainMethod()) {
+				continue;
+			}
+			if (ce.getElementName().equals(root.getElementName())) {
+				continue;
+			}
+			if (indexOfValue(treeElements, ce.getElementName()) == -1) {
+				treeElements.add(ce);
+				IJavaElement[] grandChildren = getJElementTreeElements(ce, file);
+				if (grandChildren == null) {
+					continue;
+				}
+				for (IJavaElement gc : grandChildren) {
+					if (indexOfValue(treeElements, gc.getElementName()) == -1) {
+						treeElements.add(gc);
+					}
+				}
+			}
+		}
+		if (treeElements.size() == 0) {
+			return null;
+		}
+
+		IJavaElement[] retArray = new IJavaElement[treeElements.size()];
+		treeElements.toArray(retArray);
+		return retArray;
+	}
+
 	private String[] getActionsList(IJavaElement iJavaElement) {
-		// TODO Auto-generated method stub
+		// TODO Complete the function with other types of elements
 		String[] ret = null;
-		System.out.println("Element name: " + iJavaElement.getElementName()
-				+ " - type: " + iJavaElement.getElementType());
 		if (iJavaElement instanceof IMethod) {
 			ret = new String[1];
 			ret[0] = IJavaRefactorings.EXTRACT_CLASS;
@@ -149,8 +214,10 @@ public class CodeImp {
 	 * 
 	 * @param element
 	 * @param action
+	 * @throws CoreException
 	 */
-	private void tryRefactoring(IJavaElement element, String action) {
+	private void tryRefactoring(IJavaElement element, String action)
+			throws CoreException {
 		// Generate refactoring actions
 		RefactoringPair pair = new RefactoringPair();
 		pair.element = element;
@@ -166,8 +233,9 @@ public class CodeImp {
 
 	/**
 	 * @param pair
+	 * @throws CoreException
 	 */
-	private void refactorElement(RefactoringPair pair) {
+	private void refactorElement(RefactoringPair pair) throws CoreException {
 		if (pair == null) {
 			return;
 		}
@@ -180,20 +248,24 @@ public class CodeImp {
 				+ pair.action);
 		RefactoringContribution contribution = RefactoringCore
 				.getRefactoringContribution(pair.action);
+
 		JavaRefactoringDescriptor descriptor = createDescriptor(pair,
 				contribution);
 
 		RefactoringStatus status = new RefactoringStatus();
-		try {
-			Refactoring refactoring = descriptor.createRefactoring(status);
-			IProgressMonitor monitor = new NullProgressMonitor();
-			refactoring.checkInitialConditions(monitor);
-			refactoring.checkFinalConditions(monitor);
-			Change change = refactoring.createChange(monitor);
-			change.perform(monitor);
-		} catch (Exception e) {
-			e.printStackTrace();
-		}
+
+		Refactoring refactoring = descriptor.createRefactoring(status);
+		IProgressMonitor monitor = new NullProgressMonitor();
+		refactoring.checkInitialConditions(monitor);
+		refactoring.checkFinalConditions(monitor);
+		Change change = refactoring.createChange(monitor);
+		undoMan.aboutToPerformChange(change);
+		Change fUndoChange = change.perform(new SubProgressMonitor(monitor, 9));
+		undoMan.changePerformed(change, true);
+		change.dispose();
+		fUndoChange
+				.initializeValidationData(new SubProgressMonitor(monitor, 1));
+		undoMan.addUndo(refactoring.getName(), fUndoChange);
 	}
 
 	/**
@@ -245,6 +317,8 @@ public class CodeImp {
 			ExtractClassDescriptor extractClassDescriptor = (ExtractClassDescriptor) descriptor;
 			extractClassDescriptor.setClassName(pair.element.getElementName()
 					+ "Class");
+			extractClassDescriptor.setCreateTopLevel(true);
+			extractClassDescriptor.setType((IType) pair.element.getParent());
 			break;
 		case IJavaRefactorings.EXTRACT_CONSTANT:
 		case IJavaRefactorings.EXTRACT_INTERFACE:
@@ -351,8 +425,6 @@ public class CodeImp {
 	 */
 	private boolean isInProject(IJavaElement e, IProject project) {
 		String elementLocation = e.getPath().toString();
-		System.out.println("Element " + e.getElementName() + ": path: "
-				+ elementLocation);
 		String[] elementPath = elementLocation.split("/");
 		String projectName = project.getName();
 		if (projectName.equals(elementPath[1])) {
@@ -493,7 +565,7 @@ public class CodeImp {
 		String[] words = code.split("[ \t\\x0b\n(){}'\";,.]");
 		int oldOffset = sourceCode.indexOf(code, 0);
 		if (oldOffset == -1) {
-			printLog("Code seems not be a part of the file");
+			// printLog("Code seems not be a part of the file");
 			return null;
 		}
 		int offset = 0;
