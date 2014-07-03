@@ -17,6 +17,7 @@ import codeimp.graders.IGrader;
 import codeimp.graders.LCOM1Score;
 import codeimp.graders.LongMethodGrader;
 import codeimp.refactoring.CodeImpRefactoring;
+import codeimp.refactoring.RefactoringPair;
 import codeimp.undo.CodeImpUndoManager;
 
 /**
@@ -25,18 +26,18 @@ import codeimp.undo.CodeImpUndoManager;
  *         Improve selected code using hill-climbing algorithm
  * 
  */
-public class CodeImp {
+public class CodeImpHillClimbing {
 
 	protected IWorkbenchWindow window;
 	protected ITextSelection codeSelection;
 	protected IFile sourceFile;
 	protected IUndoManager undoMan;
 
-	public static void printLog(String log) {
-		System.out.println(System.currentTimeMillis() + " - CodeImp - " + log);
+	private void printLog(String log) {
+		CodeImpUtils.printLog(this.getClass().getName() + " - " + log);
 	}
 
-	public CodeImp(ITextSelection selectedCode, IFile file,
+	public CodeImpHillClimbing(ITextSelection selectedCode, IFile file,
 			IWorkbenchWindow currentWindow) {
 		codeSelection = selectedCode;
 		sourceFile = file;
@@ -45,45 +46,50 @@ public class CodeImp {
 
 	public void runImprovement() {
 		try {
-			// undoMan = RefactoringCore.getUndoManager();
 			undoMan = new CodeImpUndoManager();
-			double curScore = calCurrentScore();
-			double oldScore = curScore;
-			IJavaElement[] refactoredElements = CodeImpUtils
-					.getRefactoredElements(codeSelection.getText(), sourceFile);
-			if (refactoredElements == null) {
-				System.out.println("Unexpected returned.");
+			String[] actionList = CodeImpUtils.getRefactoringActions();
+			if (actionList == null || actionList.length == 0) {
+				printLog("No refactoring action found.");
 				return;
 			}
-			if (refactoredElements.length == 0) {
-				System.out.println("No item identified.");
+			double curScore = calCurrentScore();
+			double oldScore = curScore;
+			IJavaElement[] rootElements = CodeImpUtils.identifyElements(
+					codeSelection.getText(), sourceFile);
+			if (rootElements == null) {
+				printLog("Unexpected returned.");
+				return;
+			}
+			if (rootElements.length == 0) {
+				printLog("No item identified.");
 				return;
 			}
 			System.out.println("Refatored elements:");
-			for (int i = 0; i < refactoredElements.length; i++) {
-				System.out.println("\t"
-						+ refactoredElements[i].getElementName() + " - "
-						+ refactoredElements[i].getElementType());
+			for (int i = 0; i < rootElements.length; i++) {
+				System.out.println("\t" + rootElements[i].getElementName()
+						+ " - " + rootElements[i].getElementType());
 			}
 
-			for (int i = 0; i < refactoredElements.length; i++) {
-				String[] actionList = getActionsList(refactoredElements[i]);
-				if (actionList == null) {
-					continue;
-				}
-				for (int j = 0; j < actionList.length; j++) {
-					CodeImpRefactoring refactoring = new CodeImpRefactoring(
-							refactoredElements[i], actionList[j],
-							sourceFile.getProject());
-					refactoring.process(undoMan);
-					curScore = calCurrentScore();
-					if (curScore < oldScore) {
-						oldScore = curScore;
+			for (int i = 0; i < actionList.length; i++) {
+				for (int j = 0; j < rootElements.length; j++) {
+					RefactoringPair[] pairs = getRefactoringPairs(
+							actionList[i], rootElements[j]);
+					if (pairs == null) {
 						continue;
-					} else {
-						undoMan.performUndo(null, null);
-						if(curScore > oldScore) {
-							break;
+					}
+					for (int k = 0; k < pairs.length; k++) {
+						CodeImpRefactoring refactoring = new CodeImpRefactoring(
+								pairs[i], sourceFile.getProject());
+						refactoring.process(undoMan);
+						curScore = calCurrentScore();
+						if (curScore < oldScore) {
+							oldScore = curScore;
+							continue;
+						} else {
+							undoMan.performUndo(null, null);
+							if (curScore > oldScore) {
+								break;
+							}
 						}
 					}
 				}
@@ -95,14 +101,21 @@ public class CodeImp {
 
 	}
 
-	private String[] getActionsList(IJavaElement iJavaElement) {
-		// TODO Complete the function with other types of elements
-		String[] ret = null;
-		if (iJavaElement instanceof IMethod) {
-			ret = new String[1];
-			ret[0] = IJavaRefactorings.EXTRACT_CLASS;
-		}
-		return ret;
+	/**
+	 * Look for the objects that the given refactoring action can be applied to
+	 * 
+	 * @param action
+	 *            determine the refactoring action, must be listed in
+	 *            {@link IJavaRefactorings}
+	 * @param rootElement
+	 *            scope to look for the objects
+	 * @return list of refactoring pair which describes all required items for
+	 *         the refactoring action
+	 */
+	private RefactoringPair[] getRefactoringPairs(String action,
+			IJavaElement rootElement) {
+		// TODO Build list of refactoring pairs for the action
+		return null;
 	}
 
 	public double calCurrentScore() throws JavaModelException {
@@ -144,8 +157,7 @@ public class CodeImp {
 	}
 
 	public String getRefactoringHistory() {
-		// TODO Get history from undoMan
-		if(undoMan != null) {
+		if (undoMan != null) {
 			return ((CodeImpUndoManager) undoMan).getCurrentUndoListString();
 		}
 		return null;

@@ -3,6 +3,7 @@
  */
 package codeimp.refactoring;
 
+import org.eclipse.core.resources.IProject;
 import org.eclipse.core.resources.IResource;
 import org.eclipse.core.runtime.CoreException;
 import org.eclipse.core.runtime.IProgressMonitor;
@@ -31,8 +32,7 @@ import org.eclipse.ltk.core.refactoring.RefactoringStatus;
  */
 public class CodeImpRefactoring {
 
-	private IJavaElement element;
-	private String action;
+	private RefactoringPair pair;
 	private IResource project;
 
 	/**
@@ -42,8 +42,14 @@ public class CodeImpRefactoring {
 	 */
 	public CodeImpRefactoring(IJavaElement element, String action,
 			IResource project) {
-		this.element = element;
-		this.action = action;
+		this.pair = new RefactoringPair();
+		this.pair.element = element;
+		this.pair.action = action;
+		this.project = project;
+	}
+
+	public CodeImpRefactoring(RefactoringPair refactoringPair, IProject project) {
+		this.pair = refactoringPair;
 		this.project = project;
 	}
 
@@ -54,11 +60,6 @@ public class CodeImpRefactoring {
 	 * @throws CoreException
 	 */
 	public void process(IUndoManager undoMan) {
-		// Generate refactoring actions
-		RefactoringPair pair = new RefactoringPair();
-		pair.element = element;
-		pair.action = action;
-
 		// Run the generated actions
 		try {
 			refactorElement(pair, undoMan);
@@ -75,8 +76,7 @@ public class CodeImpRefactoring {
 		if (pair.element == null || pair.action == null) {
 			return;
 		}
-		System.out.println("Refator " + pair.element.getElementName() + " by "
-				+ pair.action);
+
 		RefactoringContribution contribution = RefactoringCore
 				.getRefactoringContribution(pair.action);
 
@@ -127,9 +127,11 @@ public class CodeImpRefactoring {
 		case IJavaRefactorings.RENAME_TYPE:
 		case IJavaRefactorings.RENAME_TYPE_PARAMETER:
 			RenameJavaElementDescriptor renameDescriptor = (RenameJavaElementDescriptor) descriptor;
-			renameDescriptor.setJavaElement(pair.element);
-			renameDescriptor.setNewName(pair.addition == null ? pair.element
-					.getElementName() + "NewName" : (String) pair.addition);
+			renameDescriptor.setJavaElement((IJavaElement) pair.element);
+			renameDescriptor
+					.setNewName(pair.addition == null ? ((IJavaElement) pair.element)
+							.getElementName() + "NewName"
+							: (String) pair.addition);
 			renameDescriptor.setDeprecateDelegate(true);
 			renameDescriptor.setKeepOriginal(false);
 			renameDescriptor.setUpdateReferences(true);
@@ -146,10 +148,11 @@ public class CodeImpRefactoring {
 			break;
 		case IJavaRefactorings.EXTRACT_CLASS:
 			ExtractClassDescriptor extractClassDescriptor = (ExtractClassDescriptor) descriptor;
-			extractClassDescriptor.setClassName(pair.element.getElementName()
-					+ "Class");
+			extractClassDescriptor.setClassName(((IJavaElement) pair.element)
+					.getElementName() + "Class");
 			extractClassDescriptor.setCreateTopLevel(true);
-			extractClassDescriptor.setType((IType) pair.element.getParent());
+			extractClassDescriptor
+					.setType((IType) ((IJavaElement) pair.element).getParent());
 			break;
 		case IJavaRefactorings.EXTRACT_CONSTANT:
 		case IJavaRefactorings.EXTRACT_INTERFACE:

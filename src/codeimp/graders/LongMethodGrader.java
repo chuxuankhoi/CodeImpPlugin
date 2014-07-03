@@ -4,6 +4,7 @@
 package codeimp.graders;
 
 import org.eclipse.jdt.core.IMethod;
+import org.eclipse.jdt.core.JavaModelException;
 
 /**
  * @author chuxuankhoi
@@ -11,6 +12,8 @@ import org.eclipse.jdt.core.IMethod;
  */
 public class LongMethodGrader implements IGrader {
 	
+	private final static int MAX_LOC = 100;
+
 	private IMethod method;
 
 	/**
@@ -20,13 +23,51 @@ public class LongMethodGrader implements IGrader {
 		this.method = method;
 	}
 
-	/* (non-Javadoc)
+	/*
+	 * (non-Javadoc)
+	 * 
 	 * @see codeimp.graders.IGrader#getScore()
 	 */
 	@Override
 	public double getScore() {
 		// TODO Implement long method scoring
-		return 0;
+		String body;
+		try {
+			body = getBody(method);
+		} catch (JavaModelException e) {
+			e.printStackTrace();
+			return 0;
+		}
+		int loc = countLOC(body);
+		System.out.println("LoC: " + loc);
+		if (loc <= MAX_LOC) {
+			return 0;
+		} else {
+			return ((double) loc - (double) MAX_LOC) / (double) MAX_LOC;
+		}
+	}
+
+	private int countLOC(String body) {
+		String[] lines = body.split("\n");
+		int count = 0;
+		for (String line : lines) {
+			line = line.replaceAll("[\\s{}]", "");
+			if (line.equals("") || line.equals("else") || line.equals("case:")
+					|| line.equals("default:")) {
+				continue;
+			} else {
+				count++;
+			}
+		}
+		return count;
+	}
+	
+	private String getBody(IMethod method) throws JavaModelException {
+		String body = method.getSource();
+		int firstIndex = body.indexOf("{");
+		int lastIndex = body.lastIndexOf("}");
+		body = body.substring(firstIndex + 1, lastIndex);
+		return body;
 	}
 
 }

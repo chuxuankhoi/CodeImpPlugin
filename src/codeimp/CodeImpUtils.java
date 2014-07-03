@@ -16,9 +16,16 @@ import org.eclipse.jdt.core.ISourceReference;
 import org.eclipse.jdt.core.IType;
 import org.eclipse.jdt.core.JavaCore;
 import org.eclipse.jdt.core.JavaModelException;
+import org.eclipse.jdt.core.refactoring.IJavaRefactorings;
 
 public final class CodeImpUtils {
-	public static int indexOfValue(List<IJavaElement> list, String elementName) {
+	/**
+	 * Get index of the element that has the given name
+	 * @param list
+	 * @param elementName
+	 * @return
+	 */
+	public static int indexOfInstanceWithName(List<IJavaElement> list, String elementName) {
 		for (IJavaElement e : list) {
 			if (e.getElementName().equals(elementName)) {
 				return list.indexOf(e);
@@ -26,40 +33,15 @@ public final class CodeImpUtils {
 		}
 		return -1;
 	}
-	
-	public static IJavaElement[] getRefactoredElements(String source, IFile file)
-			throws JavaModelException {
-		ArrayList<IJavaElement> refactoredElements = new ArrayList<IJavaElement>();
-		IJavaElement[] rootElements = identifyElements(source, file);
-		for (IJavaElement e : rootElements) {
-			if (isInProject(e, file.getProject())) {
-				if (e instanceof IMethod && ((IMethod) e).isMainMethod()) {
-					continue;
-				}
-				if (CodeImpUtils.indexOfValue(refactoredElements, e.getElementName()) == -1) {
-					refactoredElements.add(e);
-					IJavaElement[] childElements = getJElementTreeElements(e,
-							file);
-					if (childElements == null) {
-						continue;
-					}
-					for (IJavaElement ce : childElements) {
-						refactoredElements.add(ce);
-					}
-				}
-			}
-		}
 
-		if (refactoredElements.size() > 0) {
-			IJavaElement[] retArray = new IJavaElement[refactoredElements
-					.size()];
-			refactoredElements.toArray(retArray);
-			return retArray;
-		} else {
-			return null;
-		}
-	}
-
+	/**
+	 * Get all IJavaElement root uses in its code
+	 * 
+	 * @param root
+	 * @param file
+	 * @return
+	 * @throws JavaModelException
+	 */
 	public static IJavaElement[] getJElementTreeElements(IJavaElement root, IFile file)
 			throws JavaModelException {
 		ArrayList<IJavaElement> treeElements = new ArrayList<IJavaElement>();
@@ -85,14 +67,14 @@ public final class CodeImpUtils {
 			if (ce.getElementName().equals(root.getElementName())) {
 				continue;
 			}
-			if (CodeImpUtils.indexOfValue(treeElements, ce.getElementName()) == -1) {
+			if (CodeImpUtils.indexOfInstanceWithName(treeElements, ce.getElementName()) == -1) {
 				treeElements.add(ce);
 				IJavaElement[] grandChildren = getJElementTreeElements(ce, file);
 				if (grandChildren == null) {
 					continue;
 				}
 				for (IJavaElement gc : grandChildren) {
-					if (CodeImpUtils.indexOfValue(treeElements, gc.getElementName()) == -1) {
+					if (CodeImpUtils.indexOfInstanceWithName(treeElements, gc.getElementName()) == -1) {
 						treeElements.add(gc);
 					}
 				}
@@ -173,8 +155,8 @@ public final class CodeImpUtils {
 	/**
 	 * Extract method to look for the fields used
 	 * 
-	 * @param method1
-	 * @param referentFields
+	 * @param method method analysed
+	 * @param referentFields list of fields that may be used in the method
 	 * @throws JavaModelException
 	 */
 	public static IField[] getFieldsInMethod(IMethod method, IField[] referentFields, IFile file)
@@ -206,5 +188,25 @@ public final class CodeImpUtils {
 		IField[] retArray = new IField[usedField.size()];
 		usedField.toArray(retArray);
 		return retArray;
+	}
+
+	/**
+	 * Print message with time stamp
+	 * 
+	 * @param log message user want to print to console
+	 */
+	public static void printLog(String log) {
+		System.out.println(System.currentTimeMillis() + " - " + log);
+	}
+
+	/**
+	 * Get all refactoring actions supported by Eclipse
+	 * Idea: Scan {@link IJavaRefactorings} to find all refactoring action
+	 * 
+	 * @return
+	 */
+	public static String[] getRefactoringActions() {
+		// TODO Get the refactoring actions list
+		return null;
 	}
 }
