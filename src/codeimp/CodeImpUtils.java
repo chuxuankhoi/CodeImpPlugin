@@ -3,6 +3,8 @@
  */
 package codeimp;
 
+import java.lang.reflect.Field;
+import java.lang.reflect.Modifier;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -21,11 +23,13 @@ import org.eclipse.jdt.core.refactoring.IJavaRefactorings;
 public final class CodeImpUtils {
 	/**
 	 * Get index of the element that has the given name
+	 * 
 	 * @param list
 	 * @param elementName
 	 * @return
 	 */
-	public static int indexOfInstanceWithName(List<IJavaElement> list, String elementName) {
+	public static int indexOfInstanceWithName(List<IJavaElement> list,
+			String elementName) {
 		for (IJavaElement e : list) {
 			if (e.getElementName().equals(elementName)) {
 				return list.indexOf(e);
@@ -42,8 +46,8 @@ public final class CodeImpUtils {
 	 * @return
 	 * @throws JavaModelException
 	 */
-	public static IJavaElement[] getJElementTreeElements(IJavaElement root, IFile file)
-			throws JavaModelException {
+	public static IJavaElement[] getJElementTreeElements(IJavaElement root,
+			IFile file) throws JavaModelException {
 		ArrayList<IJavaElement> treeElements = new ArrayList<IJavaElement>();
 		IJavaElement[] childElements = null;
 		if (root instanceof IType) {
@@ -67,14 +71,16 @@ public final class CodeImpUtils {
 			if (ce.getElementName().equals(root.getElementName())) {
 				continue;
 			}
-			if (CodeImpUtils.indexOfInstanceWithName(treeElements, ce.getElementName()) == -1) {
+			if (CodeImpUtils.indexOfInstanceWithName(treeElements,
+					ce.getElementName()) == -1) {
 				treeElements.add(ce);
 				IJavaElement[] grandChildren = getJElementTreeElements(ce, file);
 				if (grandChildren == null) {
 					continue;
 				}
 				for (IJavaElement gc : grandChildren) {
-					if (CodeImpUtils.indexOfInstanceWithName(treeElements, gc.getElementName()) == -1) {
+					if (CodeImpUtils.indexOfInstanceWithName(treeElements,
+							gc.getElementName()) == -1) {
 						treeElements.add(gc);
 					}
 				}
@@ -88,7 +94,7 @@ public final class CodeImpUtils {
 		treeElements.toArray(retArray);
 		return retArray;
 	}
-	
+
 	/**
 	 * Check the class is belong to the current project or not. This method is
 	 * important because IJavaElement.getChildren() may get IType instances
@@ -106,7 +112,7 @@ public final class CodeImpUtils {
 		}
 		return false;
 	}
-	
+
 	/**
 	 * Look for IJavaElement instances in the given string. The string must be a
 	 * part of a source file.
@@ -151,19 +157,22 @@ public final class CodeImpUtils {
 		retList.toArray(retArray);
 		return retArray;
 	}
-	
+
 	/**
 	 * Extract method to look for the fields used
 	 * 
-	 * @param method method analysed
-	 * @param referentFields list of fields that may be used in the method
+	 * @param method
+	 *            method analysed
+	 * @param referentFields
+	 *            list of fields that may be used in the method
 	 * @throws JavaModelException
 	 */
-	public static IField[] getFieldsInMethod(IMethod method, IField[] referentFields, IFile file)
-			throws JavaModelException {
+	public static IField[] getFieldsInMethod(IMethod method,
+			IField[] referentFields, IFile file) throws JavaModelException {
 		String method1Code = method.getSource();
 		ArrayList<IField> usedField = new ArrayList<IField>();
-		IJavaElement[] elements = CodeImpUtils.identifyElements(method1Code, file);
+		IJavaElement[] elements = CodeImpUtils.identifyElements(method1Code,
+				file);
 		for (IJavaElement e : elements) {
 			if (!(e instanceof IField))
 				continue;
@@ -193,20 +202,41 @@ public final class CodeImpUtils {
 	/**
 	 * Print message with time stamp
 	 * 
-	 * @param log message user want to print to console
+	 * @param log
+	 *            message user want to print to console
 	 */
 	public static void printLog(String log) {
 		System.out.println(System.currentTimeMillis() + " - " + log);
 	}
 
 	/**
-	 * Get all refactoring actions supported by Eclipse
-	 * Idea: Scan {@link IJavaRefactorings} to find all refactoring action
+	 * Get all refactoring actions supported by scanning
+	 * {@link IJavaRefactorings} to find all static fields' value
 	 * 
 	 * @return
 	 */
 	public static String[] getRefactoringActions() {
-		// TODO Get the refactoring actions list
-		return null;
+		Field[] fields = IJavaRefactorings.class.getDeclaredFields();
+		ArrayList<String> staticFieldValues = new ArrayList<String>();
+		for (int i = 0; i < fields.length; i++) {
+			if (Modifier.isStatic(fields[i].getModifiers())) {
+				try {
+					staticFieldValues.add((String) fields[i].get(null));
+				} catch (IllegalArgumentException | IllegalAccessException e) {
+					continue;
+				}
+			}
+		}
+		if (staticFieldValues.size() == 0) {
+			return null;
+		}
+		System.out.println("All refactoring action: ");
+		for (int i = 0; i < staticFieldValues.size(); i++) {
+			System.out.println("\t" + staticFieldValues.get(i));
+		}
+
+		String[] ret = new String[staticFieldValues.size()];
+		staticFieldValues.toArray(ret);
+		return ret;
 	}
 }
