@@ -8,15 +8,14 @@ import org.eclipse.jdt.core.IJavaElement;
 import org.eclipse.jdt.core.IMethod;
 import org.eclipse.jdt.core.IType;
 import org.eclipse.jdt.core.JavaModelException;
-import org.eclipse.jdt.core.refactoring.IJavaRefactorings;
 import org.eclipse.jface.text.ITextSelection;
-import org.eclipse.ltk.core.refactoring.IUndoManager;
 import org.eclipse.ui.IWorkbenchWindow;
 
 import codeimp.graders.IGrader;
 import codeimp.graders.LCOM1Score;
 import codeimp.graders.LongMethodGrader;
 import codeimp.refactoring.CodeImpRefactoring;
+import codeimp.refactoring.CodeImpRefactoringManager;
 import codeimp.refactoring.RefactoringPair;
 import codeimp.undo.CodeImpUndoManager;
 
@@ -26,16 +25,7 @@ import codeimp.undo.CodeImpUndoManager;
  *         Improve selected code using hill-climbing algorithm
  * 
  */
-public class CodeImpHillClimbing {
-
-	protected IWorkbenchWindow window;
-	protected ITextSelection codeSelection;
-	protected IFile sourceFile;
-	protected IUndoManager undoMan;
-
-	private void printLog(String log) {
-		CodeImpUtils.printLog(this.getClass().getName() + " - " + log);
-	}
+public class CodeImpHillClimbing extends CodeImpAbstract {
 
 	public CodeImpHillClimbing(ITextSelection selectedCode, IFile file,
 			IWorkbenchWindow currentWindow) {
@@ -46,14 +36,24 @@ public class CodeImpHillClimbing {
 
 	public void runImprovement() {
 		try {
-			undoMan = new CodeImpUndoManager();
-			String[] actionList = CodeImpUtils.getRefactoringActions();
+			if (codeSelection == null || sourceFile == null) {
+				printLog("runImprovement - Lack of information about the experiment.");
+				return;
+			}
+			double curScore = calCurrentScore();
+			if (curScore <= 0) {
+				printLog("Plug-in cannot judge the source code.");
+				return;
+			}
+			double oldScore = curScore;
+			if (undoMan == null)
+				undoMan = new CodeImpUndoManager();
+			CodeImpRefactoringManager refManager = CodeImpRefactoringManager.getManager();
+			String[] actionList = refManager.getActionsList();
 			if (actionList == null || actionList.length == 0) {
 				printLog("No refactoring action found.");
 				return;
 			}
-			double curScore = calCurrentScore();
-			double oldScore = curScore;
 			IJavaElement[] rootElements = CodeImpUtils.identifyElements(
 					codeSelection.getText(), sourceFile);
 			if (rootElements == null) {
@@ -72,8 +72,8 @@ public class CodeImpHillClimbing {
 
 			for (int i = 0; i < actionList.length; i++) {
 				for (int j = 0; j < rootElements.length; j++) {
-					RefactoringPair[] pairs = getRefactoringPairs(
-							actionList[i], rootElements[j]);
+					RefactoringPair[] pairs = refManager.getRefactoringPairs(
+							rootElements[j], actionList[i], sourceFile);
 					if (pairs == null) {
 						continue;
 					}
@@ -101,42 +101,8 @@ public class CodeImpHillClimbing {
 
 	}
 
-	/**
-	 * Look for the objects that the given refactoring action can be applied to
-	 * 
-	 * @param action
-	 *            determine the refactoring action, must be listed in
-	 *            {@link IJavaRefactorings}
-	 * @param rootElement
-	 *            scope to look for the objects
-	 * @return list of refactoring pair which describes all required items for
-	 *         the refactoring action
-	 */
-	private RefactoringPair[] getRefactoringPairs(String action,
-			IJavaElement rootElement) {
-		// TODO Build list of refactoring pairs for the action
-		return null;
-	}
-
-	public double calCurrentScore() throws JavaModelException {
-		IJavaElement[] elements = CodeImpUtils.identifyElements(
-				codeSelection.getText(), sourceFile);
-		if (elements == null) {
-			printLog("calCurrentScore - No element found by identifier.");
-			return 0;
-		}
-		double score = 0;
-		for (IJavaElement element : elements) {
-			double elementScore = scoreElement(element);
-			printLog("calCurrentScore - Element: " + element.getElementName()
-					+ " - Type: " + element.getElementType() + " - Score: "
-					+ elementScore);
-			score += elementScore;
-		}
-		return score;
-	}
-
-	private double scoreElement(IJavaElement element) throws JavaModelException {
+	protected double scoreElement(IJavaElement element)
+			throws JavaModelException {
 		// TODO Select appropriate scoring function for element based on its
 		// type
 		IGrader grader = null;
@@ -154,13 +120,6 @@ public class CodeImpHillClimbing {
 		}
 
 		return grader == null ? 0 : grader.getScore();
-	}
-
-	public String getRefactoringHistory() {
-		if (undoMan != null) {
-			return ((CodeImpUndoManager) undoMan).getCurrentUndoListString();
-		}
-		return null;
 	}
 
 }

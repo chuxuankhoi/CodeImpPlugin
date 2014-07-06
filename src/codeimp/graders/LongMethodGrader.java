@@ -6,6 +6,8 @@ package codeimp.graders;
 import org.eclipse.jdt.core.IMethod;
 import org.eclipse.jdt.core.JavaModelException;
 
+import codeimp.CodeImpUtils;
+
 /**
  * @author chuxuankhoi
  *
@@ -33,7 +35,7 @@ public class LongMethodGrader implements IGrader {
 		// TODO Implement long method scoring
 		String body;
 		try {
-			body = getBody(method);
+			body = CodeImpUtils.getBody(method);
 		} catch (JavaModelException e) {
 			e.printStackTrace();
 			return 0;
@@ -60,14 +62,6 @@ public class LongMethodGrader implements IGrader {
 			}
 		}
 		return count;
-	}
-	
-	private String getBody(IMethod method) throws JavaModelException {
-		String body = method.getSource();
-		int firstIndex = body.indexOf("{");
-		int lastIndex = body.lastIndexOf("}");
-		body = body.substring(firstIndex + 1, lastIndex);
-		return body;
 	}
 
 }

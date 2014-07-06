@@ -67,7 +67,7 @@ public class CodeImpActionDelegate implements IWorkbenchWindowActionDelegate {
 		}
 
 		// Run the improvement
-		CodeImpHillClimbing improvementJob = new CodeImpHillClimbing(textSelection, curEditorFile,
+		CodeImpAbstract improvementJob = new CodeImpHillClimbing(textSelection, curEditorFile,
 				window);
 		improvementJob.runImprovement();
 

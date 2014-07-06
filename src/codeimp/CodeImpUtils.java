@@ -3,8 +3,6 @@
  */
 package codeimp;
 
-import java.lang.reflect.Field;
-import java.lang.reflect.Modifier;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -18,7 +16,6 @@ import org.eclipse.jdt.core.ISourceReference;
 import org.eclipse.jdt.core.IType;
 import org.eclipse.jdt.core.JavaCore;
 import org.eclipse.jdt.core.JavaModelException;
-import org.eclipse.jdt.core.refactoring.IJavaRefactorings;
 
 public final class CodeImpUtils {
 	/**
@@ -208,35 +205,12 @@ public final class CodeImpUtils {
 	public static void printLog(String log) {
 		System.out.println(System.currentTimeMillis() + " - " + log);
 	}
-
-	/**
-	 * Get all refactoring actions supported by scanning
-	 * {@link IJavaRefactorings} to find all static fields' value
-	 * 
-	 * @return
-	 */
-	public static String[] getRefactoringActions() {
-		Field[] fields = IJavaRefactorings.class.getDeclaredFields();
-		ArrayList<String> staticFieldValues = new ArrayList<String>();
-		for (int i = 0; i < fields.length; i++) {
-			if (Modifier.isStatic(fields[i].getModifiers())) {
-				try {
-					staticFieldValues.add((String) fields[i].get(null));
-				} catch (IllegalArgumentException | IllegalAccessException e) {
-					continue;
-				}
-			}
-		}
-		if (staticFieldValues.size() == 0) {
-			return null;
-		}
-		System.out.println("All refactoring action: ");
-		for (int i = 0; i < staticFieldValues.size(); i++) {
-			System.out.println("\t" + staticFieldValues.get(i));
-		}
-
-		String[] ret = new String[staticFieldValues.size()];
-		staticFieldValues.toArray(ret);
-		return ret;
+	
+	public static String getBody(IMethod method) throws JavaModelException {
+		String body = method.getSource();
+		int firstIndex = body.indexOf("{");
+		int lastIndex = body.lastIndexOf("}");
+		body = body.substring(firstIndex + 1, lastIndex);
+		return body;
 	}
 }
