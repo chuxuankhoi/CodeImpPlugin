@@ -9,6 +9,7 @@ import java.util.ArrayList;
 
 import org.eclipse.core.resources.IFile;
 import org.eclipse.core.resources.IResource;
+import org.eclipse.jdt.core.ICompilationUnit;
 import org.eclipse.jdt.core.IField;
 import org.eclipse.jdt.core.IJavaElement;
 import org.eclipse.jdt.core.ILocalVariable;
@@ -22,6 +23,7 @@ import org.eclipse.jdt.core.refactoring.IJavaRefactorings;
 import org.eclipse.jdt.core.refactoring.descriptors.ExtractClassDescriptor;
 import org.eclipse.jdt.core.refactoring.descriptors.JavaRefactoringDescriptor;
 import org.eclipse.jdt.core.refactoring.descriptors.MoveDescriptor;
+import org.eclipse.jdt.core.refactoring.descriptors.MoveStaticMembersDescriptor;
 import org.eclipse.jdt.core.refactoring.descriptors.RenameJavaElementDescriptor;
 import org.eclipse.ltk.core.refactoring.RefactoringContribution;
 import org.eclipse.ltk.core.refactoring.RefactoringCore;
@@ -61,6 +63,8 @@ public class CodeImpRefactoringManager {
 				}
 			}
 		}
+		actionsList.add(IJavaRefactorings.EXTRACT_CLASS);
+		// actionsList.add(IJavaRefactorings.MOVE_STATIC_MEMBERS);
 
 	}
 
@@ -101,12 +105,11 @@ public class CodeImpRefactoringManager {
 			switch (action) {
 			case IJavaRefactorings.RENAME_FIELD:
 				// Get all fields declared in the root element (class)
-				pairs = getRenameFieldPairs(rootElement, action);
+				pairs = getRenameFieldPairs(rootElement);
 				break;
 			case IJavaRefactorings.RENAME_LOCAL_VARIABLE:
 				// Get all local variables declared in the root element (method)
-				pairs = getRenameLocalVariablePairs(rootElement, action,
-						sourceFile);
+				pairs = getRenameLocalVariablePairs(rootElement, sourceFile);
 				break;
 			case IJavaRefactorings.RENAME_COMPILATION_UNIT:
 			case IJavaRefactorings.RENAME_ENUM_CONSTANT:
@@ -122,13 +125,26 @@ public class CodeImpRefactoringManager {
 			case IJavaRefactorings.CONVERT_LOCAL_VARIABLE:
 			case IJavaRefactorings.CONVERT_MEMBER_TYPE:
 			case IJavaRefactorings.COPY:
+				break;
 			case IJavaRefactorings.DELETE:
+				pairs = getDeletePairs(rootElement);
+				break;
 			case IJavaRefactorings.ENCAPSULATE_FIELD:
+				break;
 			case IJavaRefactorings.EXTRACT_CLASS:
+				pairs = getExtractClassPairs(rootElement);
+				break;
 			case IJavaRefactorings.EXTRACT_CONSTANT:
+				pairs = getExtractConstantPairs(rootElement);
+				break;
 			case IJavaRefactorings.EXTRACT_INTERFACE:
+				break;
 			case IJavaRefactorings.EXTRACT_LOCAL_VARIABLE:
+				pairs = getExtractLocalVariablePairs(rootElement);
+				break;
 			case IJavaRefactorings.EXTRACT_METHOD:
+				pairs = getExtractMethodPairs(rootElement);
+				break;
 			case IJavaRefactorings.EXTRACT_SUPERCLASS:
 			case IJavaRefactorings.GENERALIZE_TYPE:
 			case IJavaRefactorings.INFER_TYPE_ARGUMENTS:
@@ -139,11 +155,22 @@ public class CodeImpRefactoringManager {
 			case IJavaRefactorings.INTRODUCE_INDIRECTION:
 			case IJavaRefactorings.INTRODUCE_PARAMETER:
 			case IJavaRefactorings.INTRODUCE_PARAMETER_OBJECT:
+				break;
 			case IJavaRefactorings.MOVE:
+				pairs = getMovePairs(rootElement);
+				break;
 			case IJavaRefactorings.MOVE_METHOD:
+				pairs = getMoveMethodPairs(rootElement);
+				break;
 			case IJavaRefactorings.MOVE_STATIC_MEMBERS:
+				pairs = getMoveStaticPairs(rootElement);
+				break;
 			case IJavaRefactorings.PULL_UP:
+				pairs = getPullUpPairs(rootElement);
+				break;
 			case IJavaRefactorings.PUSH_DOWN:
+				pairs = getPushDownPairs(rootElement);
+				break;
 			default:
 				break;
 			}
@@ -154,16 +181,191 @@ public class CodeImpRefactoringManager {
 		return pairs;
 	}
 
+	private RefactoringPair[] getPushDownPairs(IJavaElement rootElement) {
+		ArrayList<RefactoringPair> pairList = new ArrayList<RefactoringPair>();
+		if (rootElement instanceof IMethod) {
+			RefactoringPair pair = new RefactoringPair();
+			pair.action = IJavaRefactorings.PUSH_DOWN;
+			pair.element = rootElement;
+			pairList.add(pair);
+		} else if (rootElement instanceof IType) {
+			try {
+				IField[] fields = ((IType) rootElement).getFields();
+				IMethod[] methods = ((IType) rootElement).getMethods();
+				for (IField f : fields) {
+					RefactoringPair pair = new RefactoringPair();
+					pair.action = IJavaRefactorings.PUSH_DOWN;
+					pair.element = f;
+					pairList.add(pair);
+				}
+				for (IMethod m : methods) {
+					RefactoringPair pair = new RefactoringPair();
+					pair.action = IJavaRefactorings.PUSH_DOWN;
+					pair.element = m;
+					pairList.add(pair);
+				}
+			} catch (JavaModelException e) {
+				e.printStackTrace();
+				return null;
+			}
+		}
+		RefactoringPair[] pairs = new RefactoringPair[pairList.size()];
+		pairs = pairList.toArray(pairs);
+		return pairs;
+	}
+
+	private RefactoringPair[] getPullUpPairs(IJavaElement rootElement) {
+		ArrayList<RefactoringPair> pairList = new ArrayList<RefactoringPair>();
+		if (rootElement instanceof IMethod) {
+			RefactoringPair pair = new RefactoringPair();
+			pair.action = IJavaRefactorings.PULL_UP;
+			pair.element = rootElement;
+			pairList.add(pair);
+		} else if (rootElement instanceof IType) {
+			try {
+				IField[] fields = ((IType) rootElement).getFields();
+				IMethod[] methods = ((IType) rootElement).getMethods();
+				for (IField f : fields) {
+					RefactoringPair pair = new RefactoringPair();
+					pair.action = IJavaRefactorings.PULL_UP;
+					pair.element = f;
+					pairList.add(pair);
+				}
+				for (IMethod m : methods) {
+					RefactoringPair pair = new RefactoringPair();
+					pair.action = IJavaRefactorings.PULL_UP;
+					pair.element = m;
+					pairList.add(pair);
+				}
+			} catch (JavaModelException e) {
+				e.printStackTrace();
+				return null;
+			}
+		}
+		RefactoringPair[] pairs = new RefactoringPair[pairList.size()];
+		pairs = pairList.toArray(pairs);
+		return pairs;
+	}
+
+	private RefactoringPair[] getMoveStaticPairs(IJavaElement rootElement) {
+		RefactoringPair[] pairs = null;
+		if (rootElement instanceof IField) {
+			if (Modifier.isStatic(rootElement.getClass().getModifiers())) {
+				pairs = new RefactoringPair[1];
+				pairs[0].action = IJavaRefactorings.DELETE;
+				pairs[0].element = rootElement;
+			}
+		} else if (rootElement instanceof IType) {
+			try {
+				IField[] fields = ((IType) rootElement).getFields();
+				IMethod[] methods = ((IType) rootElement).getMethods();
+				ArrayList<RefactoringPair> pairList = new ArrayList<RefactoringPair>();
+				for (IField f : fields) {
+					if (CodeImpUtils.isStatic(f)) {
+						RefactoringPair pair = new RefactoringPair();
+						pair.action = IJavaRefactorings.MOVE_STATIC_MEMBERS;
+						pair.element = f;
+						pairList.add(pair);
+					}
+				}
+				for (IMethod m : methods) {
+					if (m.isMainMethod()) {
+						continue;
+					}
+					if (CodeImpUtils.isStatic(m)) {
+						RefactoringPair pair = new RefactoringPair();
+						pair.action = IJavaRefactorings.MOVE_STATIC_MEMBERS;
+						pair.element = m;
+						pairList.add(pair);
+					}
+				}
+				pairs = new RefactoringPair[pairList.size()];
+				pairs = pairList.toArray(pairs);
+			} catch (JavaModelException e) {
+				e.printStackTrace();
+				return null;
+			}
+		}
+		return pairs;
+	}
+
+	private RefactoringPair[] getMoveMethodPairs(IJavaElement rootElement) {
+		// TODO Auto-generated method stub
+		return null;
+	}
+
+	private RefactoringPair[] getExtractMethodPairs(IJavaElement rootElement) {
+		// TODO Auto-generated method stub
+		return null;
+	}
+
+	private RefactoringPair[] getExtractLocalVariablePairs(
+			IJavaElement rootElement) {
+		// TODO Auto-generated method stub
+		return null;
+	}
+
+	private RefactoringPair[] getExtractConstantPairs(IJavaElement rootElement) {
+		// TODO Auto-generated method stub
+		return null;
+	}
+
+	private RefactoringPair[] getMovePairs(IJavaElement rootElement) {
+		// TODO Auto-generated method stub
+		return null;
+	}
+
+	private RefactoringPair[] getExtractClassPairs(IJavaElement rootElement) {
+		ArrayList<RefactoringPair> pairList = new ArrayList<RefactoringPair>();
+		if (rootElement instanceof IMethod || rootElement instanceof IField) {
+			RefactoringPair pair = new RefactoringPair();
+			pair.action = IJavaRefactorings.EXTRACT_CLASS;
+			pair.element = rootElement;
+			pairList.add(pair);
+		} else if (rootElement instanceof IType) {
+			try {
+				IField[] fields = ((IType) rootElement).getFields();
+				IMethod[] methods = ((IType) rootElement).getMethods();
+				for (IField f : fields) {
+					RefactoringPair pair = new RefactoringPair();
+					pair.action = IJavaRefactorings.EXTRACT_CLASS;
+					pair.element = f;
+					pairList.add(pair);
+				}
+				for (IMethod m : methods) {
+					if (m.isMainMethod()) {
+						continue;
+					}
+					RefactoringPair pair = new RefactoringPair();
+					pair.action = IJavaRefactorings.EXTRACT_CLASS;
+					pair.element = m;
+					pairList.add(pair);
+				}
+			} catch (JavaModelException e) {
+				e.printStackTrace();
+				return null;
+			}
+		}
+		RefactoringPair[] pairs = new RefactoringPair[pairList.size()];
+		pairs = pairList.toArray(pairs);
+		return pairs;
+	}
+
+	private RefactoringPair[] getDeletePairs(IJavaElement rootElement) {
+		RefactoringPair[] pairs = new RefactoringPair[1];
+		pairs[0].action = IJavaRefactorings.DELETE;
+		pairs[0].element = rootElement;
+		return pairs;
+	}
+
 	/**
 	 * @param rootElement
-	 * @param action
 	 * @param sourceFile
-	 * @param pairs
 	 * @return
 	 * @throws JavaModelException
 	 */
 	private RefactoringPair[] getRenameLocalVariablePairs(
-			IJavaElement rootElement, String action, IFile sourceFile)
+			IJavaElement rootElement, IFile sourceFile)
 			throws JavaModelException {
 		if (rootElement instanceof IMethod) {
 			IJavaElement[] allElements = CodeImpUtils.identifyElements(
@@ -176,7 +378,7 @@ public class CodeImpRefactoringManager {
 				if (allElements[i] instanceof ILocalVariable) {
 					RefactoringPair pair = new RefactoringPair();
 					pair.element = allElements[i];
-					pair.action = action;
+					pair.action = IJavaRefactorings.RENAME_LOCAL_VARIABLE;
 					pair.addition = "local" + i;
 					pairList.add(pair);
 				}
@@ -193,19 +395,17 @@ public class CodeImpRefactoringManager {
 
 	/**
 	 * @param rootElement
-	 * @param action
-	 * @param pairs
 	 * @return
 	 * @throws JavaModelException
 	 */
-	private RefactoringPair[] getRenameFieldPairs(IJavaElement rootElement,
-			String action) throws JavaModelException {
+	private RefactoringPair[] getRenameFieldPairs(IJavaElement rootElement)
+			throws JavaModelException {
 		if (rootElement instanceof IType) {
 			IField[] fields = ((IType) rootElement).getFields();
 			RefactoringPair[] pairs = new RefactoringPair[fields.length];
 			for (int i = 0; i < fields.length; i++) {
 				pairs[i].element = fields[i];
-				pairs[i].action = action;
+				pairs[i].action = IJavaRefactorings.RENAME_FIELD;
 				pairs[i].addition = "field" + i;
 			}
 			return pairs;
@@ -279,15 +479,75 @@ public class CodeImpRefactoringManager {
 		case IJavaRefactorings.MOVE_METHOD:
 			break;
 		case IJavaRefactorings.MOVE_STATIC_MEMBERS:
+			createMoveStaticDescriptor(pair, descriptor);
 			break;
 		case IJavaRefactorings.PULL_UP:
+			createPullUpDescriptor(pair, descriptor);
 			break;
 		case IJavaRefactorings.PUSH_DOWN:
+			createPushDownDescriptor(pair, descriptor);
 		default:
 			break;
 		}
 
 		return descriptor;
+	}
+
+	private void createMoveStaticDescriptor(RefactoringPair pair,
+			JavaRefactoringDescriptor descriptor) {
+		MoveStaticMembersDescriptor mDescriptor = (MoveStaticMembersDescriptor) descriptor;
+		mDescriptor.setDeprecateDelegate(false);
+		mDescriptor.setKeepOriginal(false);
+		IType destType = null;
+		destType = getTmpClass((IJavaElement) pair.element);
+		if (destType == null) {
+			return;
+		}
+		mDescriptor.setDestinationType(destType);
+		IMember[] members = new IMember[1];
+		members[0] = (IMember) pair.element;
+		mDescriptor.setMembers(members);
+	}
+
+	private IType getTmpClass(IJavaElement element) {
+		IPackageFragment pkg = null;
+		if (element instanceof IType) {
+			pkg = ((IType) element).getPackageFragment();
+		} else if (element instanceof IField || element instanceof IMethod) {
+			pkg = ((IType) (element.getParent())).getPackageFragment();
+		}
+		if (pkg == null) {
+			return null;
+		}
+		String className = "TmpClass";
+		String filename = className + ".java";
+		ICompilationUnit icu = pkg.getCompilationUnit(filename);
+		if (icu == null) {
+			String contents = pkg.getElementName() + "\n";
+			contents += ("public class " + className + "{" + "\n");
+			contents += ("\n" + "}");
+
+			try {
+				icu = pkg
+						.createCompilationUnit(filename, contents, false, null);
+			} catch (JavaModelException e) {
+				e.printStackTrace();
+				return null;
+			}
+			System.out.println("Compilation unit: " + icu.getElementName());
+		}
+
+		return icu == null ? null : icu.getType(className);
+	}
+
+	private void createPushDownDescriptor(RefactoringPair pair,
+			JavaRefactoringDescriptor descriptor) {
+		// Nothing is needed to set
+	}
+
+	private void createPullUpDescriptor(RefactoringPair pair,
+			JavaRefactoringDescriptor descriptor) {
+		// Nothing is needed to set
 	}
 
 	/**

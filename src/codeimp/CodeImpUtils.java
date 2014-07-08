@@ -213,4 +213,15 @@ public final class CodeImpUtils {
 		body = body.substring(firstIndex + 1, lastIndex);
 		return body;
 	}
+	
+	public static boolean isStatic(IJavaElement element) throws JavaModelException {
+		if(element instanceof IField) {
+			return (((IField) element).getSource().indexOf("static ") > -1);
+		} else if (element instanceof IMethod) {
+			String source = ((IMethod) element).getSource();
+			source = source.substring(0, source.indexOf("{"));
+			return (source.indexOf("static ") > -1);
+		}
+		return false;
+	}
 }

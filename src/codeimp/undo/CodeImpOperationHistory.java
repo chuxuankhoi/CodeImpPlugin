@@ -375,7 +375,6 @@ public class CodeImpOperationHistory implements IOperationHistory {
 	 */
 	private IStatus doUndo(IProgressMonitor monitor, IAdaptable info,
 			IUndoableOperation operation) throws ExecutionException {
-		System.out.println("Undo operation of my own project is being used");
 		IStatus status = getUndoApproval(operation, info);
 		if (status.isOK()) {
 			notifyAboutToUndo(operation);
