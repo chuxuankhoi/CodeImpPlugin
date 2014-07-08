@@ -135,15 +135,11 @@ public class CodeImpRefactoringManager {
 				pairs = getExtractClassPairs(rootElement);
 				break;
 			case IJavaRefactorings.EXTRACT_CONSTANT:
-				pairs = getExtractConstantPairs(rootElement);
-				break;
 			case IJavaRefactorings.EXTRACT_INTERFACE:
 				break;
 			case IJavaRefactorings.EXTRACT_LOCAL_VARIABLE:
-				pairs = getExtractLocalVariablePairs(rootElement);
-				break;
 			case IJavaRefactorings.EXTRACT_METHOD:
-				pairs = getExtractMethodPairs(rootElement);
+				// Too complicated, other tool implemented it better
 				break;
 			case IJavaRefactorings.EXTRACT_SUPERCLASS:
 			case IJavaRefactorings.GENERALIZE_TYPE:
@@ -290,24 +286,32 @@ public class CodeImpRefactoringManager {
 	}
 
 	private RefactoringPair[] getMoveMethodPairs(IJavaElement rootElement) {
-		// TODO Auto-generated method stub
-		return null;
-	}
-
-	private RefactoringPair[] getExtractMethodPairs(IJavaElement rootElement) {
-		// TODO Auto-generated method stub
-		return null;
-	}
-
-	private RefactoringPair[] getExtractLocalVariablePairs(
-			IJavaElement rootElement) {
-		// TODO Auto-generated method stub
-		return null;
-	}
-
-	private RefactoringPair[] getExtractConstantPairs(IJavaElement rootElement) {
-		// TODO Auto-generated method stub
-		return null;
+		RefactoringPair[] pairs = null;
+		if (rootElement instanceof IMethod) {
+			pairs = new RefactoringPair[1];
+			pairs[0].action = IJavaRefactorings.MOVE_METHOD;
+			pairs[0].element = rootElement;
+		} else if (rootElement instanceof IType) {
+			try {
+				IMethod[] methods = ((IType) rootElement).getMethods();
+				ArrayList<RefactoringPair> pairList = new ArrayList<RefactoringPair>();
+				for (IMethod m : methods) {
+					if (m.isMainMethod()) {
+						continue;
+					}
+					RefactoringPair pair = new RefactoringPair();
+					pair.action = IJavaRefactorings.MOVE_METHOD;
+					pair.element = m;
+					pairList.add(pair);
+				}
+				pairs = new RefactoringPair[pairList.size()];
+				pairs = pairList.toArray(pairs);
+			} catch (JavaModelException e) {
+				e.printStackTrace();
+				return null;
+			}
+		}
+		return pairs;
 	}
 
 	private RefactoringPair[] getMovePairs(IJavaElement rootElement) {
@@ -477,6 +481,7 @@ public class CodeImpRefactoringManager {
 			createMoveDescriptor(pair, descriptor);
 			break;
 		case IJavaRefactorings.MOVE_METHOD:
+			createMoveMethodDescriptor(pair, descriptor);
 			break;
 		case IJavaRefactorings.MOVE_STATIC_MEMBERS:
 			createMoveStaticDescriptor(pair, descriptor);
@@ -491,6 +496,11 @@ public class CodeImpRefactoringManager {
 		}
 
 		return descriptor;
+	}
+
+	private void createMoveMethodDescriptor(RefactoringPair pair,
+			JavaRefactoringDescriptor descriptor) {
+		// Nothing is needed to set
 	}
 
 	private void createMoveStaticDescriptor(RefactoringPair pair,
