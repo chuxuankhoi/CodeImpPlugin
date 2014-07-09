@@ -10,17 +10,22 @@ import org.eclipse.core.runtime.IProgressMonitor;
 import org.eclipse.core.runtime.NullProgressMonitor;
 import org.eclipse.core.runtime.SubProgressMonitor;
 import org.eclipse.jdt.core.IJavaElement;
-import org.eclipse.jdt.core.refactoring.descriptors.JavaRefactoringDescriptor;
+import org.eclipse.jdt.core.dom.ThisExpression;
 import org.eclipse.ltk.core.refactoring.Change;
 import org.eclipse.ltk.core.refactoring.IUndoManager;
 import org.eclipse.ltk.core.refactoring.Refactoring;
-import org.eclipse.ltk.core.refactoring.RefactoringStatus;
+
+import codeimp.CodeImpUtils;
 
 /**
  * @author chuxuankhoi
  * 
  */
 public class CodeImpRefactoring {
+
+	private void printLog(String log) {
+		CodeImpUtils.printLog(this.getClass().getName() + " - " + log);
+	}
 
 	private RefactoringPair pair;
 	private IResource project;
@@ -66,26 +71,36 @@ public class CodeImpRefactoring {
 		if (pair.element == null || pair.action == null) {
 			return;
 		}
-		
-		CodeImpRefactoringManager refactoringManager = CodeImpRefactoringManager.getManager();
 
-		JavaRefactoringDescriptor descriptor = refactoringManager.getDescriptor(pair,
+		CodeImpRefactoringManager refactoringManager = CodeImpRefactoringManager
+				.getManager();
+
+		Refactoring refactoring = refactoringManager.getRefactoring(pair,
 				project);
-
-		RefactoringStatus status = new RefactoringStatus();
-
-		Refactoring refactoring = descriptor.createRefactoring(status);
+		if (refactoring == null) {
+			printLog("No refactoring is created for: "
+					+ pair.element.toString());
+			return;
+		}
 		IProgressMonitor monitor = new NullProgressMonitor();
-		refactoring.checkInitialConditions(monitor);
-		refactoring.checkFinalConditions(monitor);
+		if (refactoring.checkInitialConditions(monitor).hasFatalError()) {
+			printLog("Cannot execute the refactoring.");
+			return;
+		}
+		if (refactoring.checkFinalConditions(monitor).hasFatalError()) {
+			printLog("Cannot execute the refactoring.");
+			return;
+		}
 		Change change = refactoring.createChange(monitor);
 		undoMan.aboutToPerformChange(change);
-		Change fUndoChange = change.perform(new SubProgressMonitor(monitor, 9));
-		undoMan.changePerformed(change, true);
+		Change fUndoChange = change.perform(new SubProgressMonitor(monitor, 9));		
 		change.dispose();
-		fUndoChange
-				.initializeValidationData(new SubProgressMonitor(monitor, 1));
-		undoMan.addUndo(refactoring.getName(), fUndoChange);
+		if (fUndoChange != null) {
+			undoMan.changePerformed(change, true);
+			fUndoChange.initializeValidationData(new SubProgressMonitor(
+					monitor, 1));
+			undoMan.addUndo(refactoring.getName(), fUndoChange);
+		}
 	}
 
 }
