@@ -86,8 +86,6 @@ public class CodeImpActionDelegate implements IWorkbenchWindowActionDelegate {
 				return Status.OK_STATUS;
 			}
 		};
-
-		// Start the Job
 		job.schedule();
 
 	}

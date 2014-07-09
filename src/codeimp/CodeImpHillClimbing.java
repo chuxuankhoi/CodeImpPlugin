@@ -40,6 +40,8 @@ public class CodeImpHillClimbing extends CodeImpAbstract {
 			printLog("runImprovement - Lack of information about the experiment.");
 			return;
 		}
+		int successfullRefactoring = 0;
+		int totalRefactoring = 0;
 		double curScore;
 		curScore = calCurrentScore();
 		// if (curScore <= 0) {
@@ -91,7 +93,13 @@ public class CodeImpHillClimbing extends CodeImpAbstract {
 							+ " pair number " + k);
 					CodeImpRefactoring refactoring = new CodeImpRefactoring(
 							pairs[k], sourceFile.getProject());
-					refactoring.process(undoMan);
+					totalRefactoring++;
+					try {
+						refactoring.process(undoMan);
+						successfullRefactoring++;
+					} catch (Exception e1) {
+						printLog("Cannot execute the refactoring");
+					}
 					curScore = calCurrentScore();
 					if (curScore < oldScore) {
 						oldScore = curScore;
@@ -116,6 +124,8 @@ public class CodeImpHillClimbing extends CodeImpAbstract {
 			}
 		}
 		printLog("Improvement completed. Final score: " + calCurrentScore());
+		printLog("Successfull refactoring: " + successfullRefactoring + "/"
+				+ totalRefactoring);
 	}
 
 	protected double scoreElement(IJavaElement element) {

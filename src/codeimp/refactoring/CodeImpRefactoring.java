@@ -8,6 +8,7 @@ import org.eclipse.core.resources.IResource;
 import org.eclipse.core.runtime.CoreException;
 import org.eclipse.core.runtime.IProgressMonitor;
 import org.eclipse.core.runtime.NullProgressMonitor;
+import org.eclipse.core.runtime.OperationCanceledException;
 import org.eclipse.core.runtime.SubProgressMonitor;
 import org.eclipse.jdt.core.IJavaElement;
 import org.eclipse.ltk.core.refactoring.Change;
@@ -53,23 +54,18 @@ public class CodeImpRefactoring {
 	 * @param action
 	 * @throws CoreException
 	 */
-	public void process(IUndoManager undoMan) {
+	public void process(IUndoManager undoMan) throws Exception {
 		// Run the generated actions
-		try {
 			refactorElement(pair, undoMan);
-		} catch (Exception e) {
-			printLog("Cannot run refactoring " + pair.action + " with "
-					+ pair.element.toString());
-		}
 	}
 
 	private void refactorElement(RefactoringPair pair, IUndoManager undoMan)
 			throws CoreException {
 		if (pair == null) {
-			return;
+			throw new OperationCanceledException();
 		}
 		if (pair.element == null || pair.action == null) {
-			return;
+			throw new OperationCanceledException();
 		}
 
 		CodeImpRefactoringManager refactoringManager = CodeImpRefactoringManager
@@ -80,16 +76,14 @@ public class CodeImpRefactoring {
 		if (refactoring == null) {
 			printLog("No refactoring is created for: "
 					+ pair.element.toString());
-			return;
+			throw new OperationCanceledException();
 		}
 		IProgressMonitor monitor = new NullProgressMonitor();
 		if (refactoring.checkInitialConditions(monitor).hasFatalError()) {
-			printLog("Cannot execute the refactoring.");
-			return;
+			throw new OperationCanceledException();
 		}
 		if (refactoring.checkFinalConditions(monitor).hasFatalError()) {
-			printLog("Cannot execute the refactoring.");
-			return;
+			throw new OperationCanceledException();
 		}
 		Change change = refactoring.createChange(monitor);
 		undoMan.aboutToPerformChange(change);
