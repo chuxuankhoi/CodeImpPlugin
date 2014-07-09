@@ -83,6 +83,9 @@ public class LCOM1Score implements IGrader {
 				file);
 		IField[] usedFields2 = CodeImpUtils.getFieldsInMethod(method2, fields,
 				file);
+		if(usedFields1 == null || usedFields2 == null) {
+			return 0;
+		}
 
 		// Get number of intersections between 2 fields
 		int ret = 0;

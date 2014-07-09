@@ -26,13 +26,19 @@ public abstract class CodeImpAbstract {
 
 	public abstract void runImprovement();
 
-	public double calCurrentScore() throws JavaModelException {
+	public double calCurrentScore() {
 		if(codeSelection == null || sourceFile == null) {
 			printLog("calCurrentScore - Lack of information about the experiment.");
 			return 0;
 		}
-		IJavaElement[] elements = CodeImpUtils.identifyElements(
-				codeSelection.getText(), sourceFile);
+		IJavaElement[] elements = null;
+		try {
+			elements = CodeImpUtils.identifyElements(
+					codeSelection.getText(), sourceFile);
+		} catch (JavaModelException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
 		if (elements == null) {
 			printLog("calCurrentScore - No element found by identifier.");
 			return 0;
@@ -48,7 +54,7 @@ public abstract class CodeImpAbstract {
 		return score;
 	}
 
-	protected abstract double scoreElement(IJavaElement element) throws JavaModelException;
+	protected abstract double scoreElement(IJavaElement element);
 
 	public String getRefactoringHistory() {
 		if (undoMan != null) {

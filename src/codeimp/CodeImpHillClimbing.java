@@ -4,6 +4,7 @@
 package codeimp;
 
 import org.eclipse.core.resources.IFile;
+import org.eclipse.core.runtime.CoreException;
 import org.eclipse.jdt.core.IJavaElement;
 import org.eclipse.jdt.core.IMethod;
 import org.eclipse.jdt.core.IType;
@@ -35,74 +36,89 @@ public class CodeImpHillClimbing extends CodeImpAbstract {
 	}
 
 	public void runImprovement() {
+		if (codeSelection == null || sourceFile == null) {
+			printLog("runImprovement - Lack of information about the experiment.");
+			return;
+		}
+		double curScore;
+		curScore = calCurrentScore();
+		// if (curScore <= 0) {
+		// printLog("Plug-in cannot judge the source code.");
+		// return;
+		// }
+		double oldScore = curScore;
+		if (undoMan == null)
+			undoMan = new CodeImpUndoManager();
+		CodeImpRefactoringManager refManager = CodeImpRefactoringManager
+				.getManager();
+		String[] actionList = refManager.getActionsList();
+		if (actionList == null || actionList.length == 0) {
+			printLog("No refactoring action found.");
+			return;
+		}
+		IJavaElement[] rootElements = null;
 		try {
-			if (codeSelection == null || sourceFile == null) {
-				printLog("runImprovement - Lack of information about the experiment.");
-				return;
-			}
-			double curScore = calCurrentScore();
-			if (curScore <= 0) {
-				printLog("Plug-in cannot judge the source code.");
-				return;
-			}
-			double oldScore = curScore;
-			if (undoMan == null)
-				undoMan = new CodeImpUndoManager();
-			CodeImpRefactoringManager refManager = CodeImpRefactoringManager.getManager();
-			String[] actionList = refManager.getActionsList();
-			if (actionList == null || actionList.length == 0) {
-				printLog("No refactoring action found.");
-				return;
-			}
-			IJavaElement[] rootElements = CodeImpUtils.identifyElements(
+			rootElements = CodeImpUtils.identifyElements(
 					codeSelection.getText(), sourceFile);
-			if (rootElements == null) {
-				printLog("Unexpected returned.");
-				return;
-			}
-			if (rootElements.length == 0) {
-				printLog("No item identified.");
-				return;
-			}
-			System.out.println("Refatored elements:");
-			for (int i = 0; i < rootElements.length; i++) {
-				System.out.println("\t" + rootElements[i].getElementName()
-						+ " - " + rootElements[i].getElementType());
-			}
+		} catch (JavaModelException e1) {
+			printLog(e1.toString());
+		}
+		if (rootElements == null) {
+			printLog("Unexpected returned.");
+			return;
+		}
+		if (rootElements.length == 0) {
+			printLog("No item identified.");
+			return;
+		}
+		System.out.println("Refatored elements:");
+		for (int i = 0; i < rootElements.length; i++) {
+			System.out.println("\t" + rootElements[i].getElementName() + " - "
+					+ rootElements[i].getElementType());
+		}
 
-			for (int i = 0; i < actionList.length; i++) {
-				for (int j = 0; j < rootElements.length; j++) {
-					RefactoringPair[] pairs = refManager.getRefactoringPairs(
-							rootElements[j], actionList[i], sourceFile);
-					if (pairs == null) {
+		for (int i = 0; i < actionList.length; i++) {
+			for (int j = 0; j < rootElements.length; j++) {
+				RefactoringPair[] pairs = refManager.getRefactoringPairs(
+						rootElements[j], actionList[i], sourceFile);
+				if (pairs == null) {
+					continue;
+				}
+				for (int k = 0; k < pairs.length; k++) {
+					printLog("Old score: " + oldScore);
+					printLog("Trying " + actionList[i] + " with root "
+							+ rootElements[j].getElementName()
+							+ " pair number " + k);
+					CodeImpRefactoring refactoring = new CodeImpRefactoring(
+							pairs[k], sourceFile.getProject());
+					refactoring.process(undoMan);
+					curScore = calCurrentScore();
+					if (curScore < oldScore) {
+						oldScore = curScore;
 						continue;
-					}
-					for (int k = 0; k < pairs.length; k++) {
-						CodeImpRefactoring refactoring = new CodeImpRefactoring(
-								pairs[i], sourceFile.getProject());
-						refactoring.process(undoMan);
-						curScore = calCurrentScore();
-						if (curScore < oldScore) {
-							oldScore = curScore;
-							continue;
-						} else {
+					} else {
+						try {
 							undoMan.performUndo(null, null);
-							if (curScore > oldScore) {
-								break;
-							}
+						} catch (CoreException e) {
+							printLog(e.toString());
+						}
+						// TODO Wait for undo completion - very bad way
+						try {
+							Thread.sleep(1000);
+						} catch (InterruptedException e) {
+							// Do nothing
+						}
+						if (curScore > oldScore) {
+							break;
 						}
 					}
 				}
 			}
-			printLog("Improvement completed. Final score: " + curScore);
-		} catch (Exception e) {
-			e.printStackTrace();
 		}
-
+		printLog("Improvement completed. Final score: " + calCurrentScore());
 	}
 
-	protected double scoreElement(IJavaElement element)
-			throws JavaModelException {
+	protected double scoreElement(IJavaElement element) {
 		// TODO Select appropriate scoring function for element based on its
 		// type
 		IGrader grader = null;

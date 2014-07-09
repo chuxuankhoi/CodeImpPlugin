@@ -36,6 +36,9 @@ public class LongMethodGrader implements IGrader {
 		String body;
 		try {
 			body = CodeImpUtils.getBody(method);
+			if(body == null) {
+				return 0;
+			}
 		} catch (JavaModelException e) {
 			e.printStackTrace();
 			return 0;

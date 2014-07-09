@@ -10,7 +10,6 @@ import org.eclipse.core.runtime.IProgressMonitor;
 import org.eclipse.core.runtime.NullProgressMonitor;
 import org.eclipse.core.runtime.SubProgressMonitor;
 import org.eclipse.jdt.core.IJavaElement;
-import org.eclipse.jdt.core.dom.ThisExpression;
 import org.eclipse.ltk.core.refactoring.Change;
 import org.eclipse.ltk.core.refactoring.IUndoManager;
 import org.eclipse.ltk.core.refactoring.Refactoring;
@@ -58,8 +57,9 @@ public class CodeImpRefactoring {
 		// Run the generated actions
 		try {
 			refactorElement(pair, undoMan);
-		} catch (CoreException e) {
-			e.printStackTrace();
+		} catch (Exception e) {
+			printLog("Cannot run refactoring " + pair.action + " with "
+					+ pair.element.toString());
 		}
 	}
 
@@ -93,7 +93,7 @@ public class CodeImpRefactoring {
 		}
 		Change change = refactoring.createChange(monitor);
 		undoMan.aboutToPerformChange(change);
-		Change fUndoChange = change.perform(new SubProgressMonitor(monitor, 9));		
+		Change fUndoChange = change.perform(new SubProgressMonitor(monitor, 9));
 		change.dispose();
 		if (fUndoChange != null) {
 			undoMan.changePerformed(change, true);

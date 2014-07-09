@@ -47,6 +47,7 @@ import codeimp.CodeImpUtils;
  * @author Chu Xuan Khoi
  * 
  */
+@SuppressWarnings("restriction")
 public class CodeImpRefactoringManager {
 
 	private static CodeImpRefactoringManager manager = null;
@@ -65,8 +66,8 @@ public class CodeImpRefactoringManager {
 	}
 
 	private void initialize() {
-		Field[] fields = IJavaRefactorings.class.getDeclaredFields();
 		actionsList = new ArrayList<String>();
+		Field[] fields = IJavaRefactorings.class.getDeclaredFields();		
 		for (int i = 0; i < fields.length; i++) {
 			if (Modifier.isStatic(fields[i].getModifiers())) {
 				try {
@@ -76,8 +77,7 @@ public class CodeImpRefactoringManager {
 				}
 			}
 		}
-		actionsList.add(IJavaRefactorings.EXTRACT_CLASS);
-		// actionsList.add(IJavaRefactorings.MOVE_STATIC_MEMBERS);
+//		 actionsList.add(IJavaRefactorings.EXTRACT_CLASS);
 
 	}
 
@@ -222,6 +222,9 @@ public class CodeImpRefactoringManager {
 		try {
 			// Get source code of the function
 			String code = CodeImpUtils.getBody(rootElement);
+			if(code == null) {
+				return;
+			}
 			getExtractMethodPairsInString(code, pairList, sourceFile);
 		} catch (JavaModelException e) {
 			e.printStackTrace();
@@ -330,9 +333,10 @@ public class CodeImpRefactoringManager {
 		RefactoringPair[] pairs = null;
 		if (rootElement instanceof IField) {
 			if (Modifier.isStatic(rootElement.getClass().getModifiers())) {
-				pairs = new RefactoringPair[1];
-				pairs[0].action = IJavaRefactorings.DELETE;
-				pairs[0].element = rootElement;
+				RefactoringPair p = new RefactoringPair();
+				p.action = IJavaRefactorings.MOVE_STATIC_MEMBERS;
+				p.element = rootElement;
+				pairs = new RefactoringPair[] {p};
 			}
 		} else if (rootElement instanceof IType) {
 			try {
@@ -371,9 +375,10 @@ public class CodeImpRefactoringManager {
 	private RefactoringPair[] getMoveMethodPairs(IJavaElement rootElement) {
 		RefactoringPair[] pairs = null;
 		if (rootElement instanceof IMethod) {
-			pairs = new RefactoringPair[1];
-			pairs[0].action = IJavaRefactorings.MOVE_METHOD;
-			pairs[0].element = rootElement;
+			RefactoringPair p = new RefactoringPair();
+			p.action = IJavaRefactorings.MOVE_METHOD;
+			p.element = rootElement;
+			pairs = new RefactoringPair[] {p};
 		} else if (rootElement instanceof IType) {
 			try {
 				IMethod[] methods = ((IType) rootElement).getMethods();
@@ -401,9 +406,10 @@ public class CodeImpRefactoringManager {
 			IFile sourceFile) throws JavaModelException {
 		RefactoringPair[] pairs = null;
 		if (rootElement instanceof IMember) {
-			pairs = new RefactoringPair[1];
-			pairs[0].action = IJavaRefactorings.MOVE;
-			pairs[0].element = rootElement;
+			RefactoringPair p = new RefactoringPair();
+			p.action = IJavaRefactorings.MOVE;
+			p.element = rootElement;
+			pairs = new RefactoringPair[] {p};
 		} else if (rootElement instanceof IType) {
 			IJavaElement[] elements = CodeImpUtils.getJElementTreeElements(
 					rootElement, sourceFile);
@@ -463,9 +469,10 @@ public class CodeImpRefactoringManager {
 	}
 
 	private RefactoringPair[] getDeletePairs(IJavaElement rootElement) {
-		RefactoringPair[] pairs = new RefactoringPair[1];
-		pairs[0].action = IJavaRefactorings.DELETE;
-		pairs[0].element = rootElement;
+		RefactoringPair p = new RefactoringPair();
+		p.action = IJavaRefactorings.DELETE;
+		p.element = rootElement;
+		RefactoringPair[] pairs = new RefactoringPair[] {p};
 		return pairs;
 	}
 
@@ -515,9 +522,12 @@ public class CodeImpRefactoringManager {
 			IField[] fields = ((IType) rootElement).getFields();
 			RefactoringPair[] pairs = new RefactoringPair[fields.length];
 			for (int i = 0; i < fields.length; i++) {
-				pairs[i].element = fields[i];
-				pairs[i].action = IJavaRefactorings.RENAME_FIELD;
-				pairs[i].addition = "field" + i;
+				RefactoringPair p = new RefactoringPair();
+				p.action = IJavaRefactorings.RENAME_FIELD;
+				p.element = fields[i];
+				p.addition = "field" + i;
+				pairs[i] = p;
+				
 			}
 			return pairs;
 		}

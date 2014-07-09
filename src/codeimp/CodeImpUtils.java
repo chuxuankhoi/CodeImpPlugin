@@ -170,6 +170,9 @@ public final class CodeImpUtils {
 		ArrayList<IField> usedField = new ArrayList<IField>();
 		IJavaElement[] elements = CodeImpUtils.identifyElements(method1Code,
 				file);
+		if(elements == null) {
+			return null;
+		}
 		for (IJavaElement e : elements) {
 			if (!(e instanceof IField))
 				continue;
@@ -208,8 +211,14 @@ public final class CodeImpUtils {
 	
 	public static String getBody(IMethod method) throws JavaModelException {
 		String body = method.getSource();
+		if(body == null) {
+			return null;
+		}
 		int firstIndex = body.indexOf("{");
 		int lastIndex = body.lastIndexOf("}");
+		if(firstIndex < 0 || lastIndex < 0) {
+			return null;
+		}
 		body = body.substring(firstIndex + 1, lastIndex);
 		return body;
 	}
@@ -219,6 +228,9 @@ public final class CodeImpUtils {
 			return (((IField) element).getSource().indexOf("static ") > -1);
 		} else if (element instanceof IMethod) {
 			String source = ((IMethod) element).getSource();
+			if(source == null) {
+				return false;
+			}
 			source = source.substring(0, source.indexOf("{"));
 			return (source.indexOf("static ") > -1);
 		}

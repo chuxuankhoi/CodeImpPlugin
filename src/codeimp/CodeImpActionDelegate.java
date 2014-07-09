@@ -51,7 +51,8 @@ public class CodeImpActionDelegate implements IWorkbenchWindowActionDelegate {
 					"Checking file extension ...", "No editor is opened.");
 			return;
 		}
-		if (!curEditorFile.getFileExtension().equals("java")) {
+		String ext = curEditorFile.getFileExtension();
+		if (ext == null || !ext.equals("java")) {
 			MessageDialog.openInformation(window.getShell(),
 					"Checking file extension ...",
 					"Current version have not support the file extension.");
