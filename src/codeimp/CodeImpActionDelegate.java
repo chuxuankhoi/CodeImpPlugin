@@ -4,6 +4,10 @@
 package codeimp;
 
 import org.eclipse.core.resources.IFile;
+import org.eclipse.core.runtime.IProgressMonitor;
+import org.eclipse.core.runtime.IStatus;
+import org.eclipse.core.runtime.Status;
+import org.eclipse.core.runtime.jobs.Job;
 import org.eclipse.jdt.core.IJavaElement;
 import org.eclipse.jface.action.IAction;
 import org.eclipse.jface.dialogs.MessageDialog;
@@ -34,7 +38,8 @@ public class CodeImpActionDelegate implements IWorkbenchWindowActionDelegate {
 	@Override
 	public void run(IAction action) {
 		MessageDialog.openInformation(window.getShell(),
-				"Have not completed yet", "CodeImpHillClimbing is under construction");
+				"Have not completed yet",
+				"CodeImpHillClimbing is under construction");
 
 		// Check Java perspective and editor
 		if (!isPerspective("Java")) {
@@ -68,14 +73,23 @@ public class CodeImpActionDelegate implements IWorkbenchWindowActionDelegate {
 		}
 
 		// Run the improvement
-		CodeImpAbstract improvementJob = new CodeImpHillClimbing(textSelection, curEditorFile,
-				window);
-		improvementJob.runImprovement();
+		final CodeImpAbstract improvementJob = new CodeImpHillClimbing(
+				textSelection, curEditorFile, window);
+		Job job = new Job("Code improvement") {
+			@Override
+			protected IStatus run(IProgressMonitor monitor) {
+				improvementJob.runImprovement();
+				// Display the analysis and confirm the changed blocks
+				System.out.println("Refactoring used: ");
+				System.out.println(improvementJob.getRefactoringHistory());
+				System.out.println("Code improvement completed.");
+				return Status.OK_STATUS;
+			}
+		};
 
-		// Display the analysis and confirm the changed blocks
-		System.out.println("Refactoring used: ");
-		System.out.println(improvementJob.getRefactoringHistory());
-		System.out.println("Code improvement completed.");
+		// Start the Job
+		job.schedule();
+
 	}
 
 	private boolean isPerspective(String expectedPerspective) {
