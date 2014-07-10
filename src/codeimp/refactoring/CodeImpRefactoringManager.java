@@ -6,10 +6,13 @@ package codeimp.refactoring;
 import java.lang.reflect.Field;
 import java.lang.reflect.Modifier;
 import java.util.ArrayList;
+import java.util.Iterator;
+import java.util.List;
 
 import org.eclipse.core.resources.IFile;
 import org.eclipse.core.resources.IResource;
 import org.eclipse.core.runtime.CoreException;
+import org.eclipse.core.runtime.NullProgressMonitor;
 import org.eclipse.jdt.core.ICompilationUnit;
 import org.eclipse.jdt.core.IField;
 import org.eclipse.jdt.core.IJavaElement;
@@ -19,19 +22,30 @@ import org.eclipse.jdt.core.IMethod;
 import org.eclipse.jdt.core.IPackageFragment;
 import org.eclipse.jdt.core.IPackageFragmentRoot;
 import org.eclipse.jdt.core.IType;
+import org.eclipse.jdt.core.ITypeHierarchy;
 import org.eclipse.jdt.core.JavaCore;
 import org.eclipse.jdt.core.JavaModelException;
+import org.eclipse.jdt.core.dom.IMethodBinding;
+import org.eclipse.jdt.core.dom.ITypeBinding;
+import org.eclipse.jdt.core.dom.IVariableBinding;
+import org.eclipse.jdt.core.dom.MethodDeclaration;
+import org.eclipse.jdt.core.dom.SingleVariableDeclaration;
+import org.eclipse.jdt.core.dom.VariableDeclaration;
 import org.eclipse.jdt.core.refactoring.IJavaRefactorings;
 import org.eclipse.jdt.core.refactoring.descriptors.ExtractClassDescriptor;
 import org.eclipse.jdt.core.refactoring.descriptors.JavaRefactoringDescriptor;
 import org.eclipse.jdt.core.refactoring.descriptors.MoveDescriptor;
 import org.eclipse.jdt.core.refactoring.descriptors.RenameJavaElementDescriptor;
 import org.eclipse.jdt.internal.corext.refactoring.code.ExtractMethodRefactoring;
+import org.eclipse.jdt.internal.corext.refactoring.structure.ASTNodeSearchUtil;
+import org.eclipse.jdt.internal.corext.refactoring.structure.CompilationUnitRewrite;
 import org.eclipse.jdt.internal.corext.refactoring.structure.MoveInstanceMethodProcessor;
 import org.eclipse.jdt.internal.corext.refactoring.structure.MoveStaticMembersProcessor;
 import org.eclipse.jdt.internal.corext.refactoring.structure.PullUpRefactoringProcessor;
 import org.eclipse.jdt.internal.corext.refactoring.structure.PushDownRefactoringProcessor;
+import org.eclipse.jdt.internal.corext.refactoring.structure.MoveInstanceMethodProcessor.ReadyOnlyFieldFinder;
 import org.eclipse.jdt.internal.ui.preferences.JavaPreferencesSettings;
+import org.eclipse.jface.text.IDocument;
 import org.eclipse.jface.text.ITextSelection;
 import org.eclipse.jface.text.TextSelection;
 import org.eclipse.ltk.core.refactoring.Refactoring;
@@ -40,6 +54,7 @@ import org.eclipse.ltk.core.refactoring.RefactoringCore;
 import org.eclipse.ltk.core.refactoring.RefactoringStatus;
 import org.eclipse.ltk.core.refactoring.participants.MoveRefactoring;
 import org.eclipse.ltk.core.refactoring.participants.ProcessorBasedRefactoring;
+import org.eclipse.ui.editors.text.TextFileDocumentProvider;
 
 import codeimp.CodeImpUtils;
 
@@ -67,7 +82,7 @@ public class CodeImpRefactoringManager {
 
 	private void initialize() {
 		actionsList = new ArrayList<String>();
-		Field[] fields = IJavaRefactorings.class.getDeclaredFields();		
+		Field[] fields = IJavaRefactorings.class.getDeclaredFields();
 		for (int i = 0; i < fields.length; i++) {
 			if (Modifier.isStatic(fields[i].getModifiers())) {
 				try {
@@ -77,7 +92,7 @@ public class CodeImpRefactoringManager {
 				}
 			}
 		}
-//		 actionsList.add(IJavaRefactorings.EXTRACT_CLASS);
+		// actionsList.add(IJavaRefactorings.PUSH_DOWN);
 
 	}
 
@@ -140,7 +155,7 @@ public class CodeImpRefactoringManager {
 			case IJavaRefactorings.COPY:
 				break;
 			case IJavaRefactorings.DELETE:
-				pairs = getDeletePairs(rootElement);
+//				pairs = getDeletePairs(rootElement);
 				break;
 			case IJavaRefactorings.ENCAPSULATE_FIELD:
 				break;
@@ -149,8 +164,8 @@ public class CodeImpRefactoringManager {
 				break;
 			case IJavaRefactorings.EXTRACT_CONSTANT:
 			case IJavaRefactorings.EXTRACT_INTERFACE:
-				break;
 			case IJavaRefactorings.EXTRACT_LOCAL_VARIABLE:
+				break;
 			case IJavaRefactorings.EXTRACT_METHOD:
 				pairs = getExtractMethodPairs(rootElement, sourceFile);
 				break;
@@ -175,7 +190,11 @@ public class CodeImpRefactoringManager {
 				pairs = getMoveStaticPairs(rootElement);
 				break;
 			case IJavaRefactorings.PULL_UP:
-				pairs = getPullUpPairs(rootElement);
+				try {
+					pairs = getPullUpPairs(rootElement, sourceFile);
+				} catch (Exception e) {
+					e.printStackTrace();
+				}
 				break;
 			case IJavaRefactorings.PUSH_DOWN:
 				pairs = getPushDownPairs(rootElement);
@@ -222,7 +241,7 @@ public class CodeImpRefactoringManager {
 		try {
 			// Get source code of the function
 			String code = CodeImpUtils.getBody(rootElement);
-			if(code == null) {
+			if (code == null) {
 				return;
 			}
 			getExtractMethodPairsInString(code, pairList, sourceFile);
@@ -242,21 +261,39 @@ public class CodeImpRefactoringManager {
 			String before = "";
 			for (int j = 0; j <= i; j++) {
 				before += codeLines[j];
+				before += "\n";
 			}
+			before = before.trim();
 			String after = "";
 			for (int j = i + 1; j < codeLines.length; j++) {
 				after += codeLines[j];
+				after += "\n";
 			}
+			after = after.trim();
 			// Get pairs from before
-			RefactoringPair pair = new RefactoringPair();
-			pair.action = IJavaRefactorings.EXTRACT_METHOD;
-			ICompilationUnit cu = JavaCore
-					.createCompilationUnitFrom(sourceFile);
-			String fileCode = cu.getSource();
-			pair.element = new TextSelection(fileCode.indexOf(before),
-					before.length());
-			pair.addition = cu;
-			pairList.add(pair);
+			if (!before.equals("")) {
+				RefactoringPair pair = new RefactoringPair();
+				pair.action = IJavaRefactorings.EXTRACT_METHOD;
+				ICompilationUnit cu = JavaCore
+						.createCompilationUnitFrom(sourceFile);
+				String fileCode = cu.getSource();
+				int index = fileCode.indexOf(before);
+				int length = before.length();
+				if (index < 0) {
+					continue;
+				}
+				TextFileDocumentProvider provider = new TextFileDocumentProvider();
+				try {
+					provider.connect(sourceFile);
+				} catch (CoreException e) {
+					e.printStackTrace();
+					return;
+				}
+				IDocument document = provider.getDocument(sourceFile);
+				pair.element = new TextSelection(document, index, length);
+				pair.addition = cu;
+				pairList.add(pair);
+			}
 
 			// Get pairs from after
 			getExtractMethodPairsInString(after, pairList, sourceFile);
@@ -296,15 +333,26 @@ public class CodeImpRefactoringManager {
 		return pairs;
 	}
 
-	private RefactoringPair[] getPullUpPairs(IJavaElement rootElement) {
+	private RefactoringPair[] getPullUpPairs(IJavaElement rootElement,
+			IFile sourceFile) throws Exception {
 		ArrayList<RefactoringPair> pairList = new ArrayList<RefactoringPair>();
 		if (rootElement instanceof IMethod) {
+			IType currentType = (IType) rootElement.getParent();
 			RefactoringPair pair = new RefactoringPair();
 			pair.action = IJavaRefactorings.PULL_UP;
 			pair.element = rootElement;
+			pair.addition = getSuperType(currentType, sourceFile);
+			if (pair.addition == null) {
+				return null;
+			}
 			pairList.add(pair);
 		} else if (rootElement instanceof IType) {
 			try {
+				IType currentType = (IType) rootElement;
+				IType superType = getSuperType(currentType, sourceFile);
+				if (superType == null) {
+					return null;
+				}
 				IField[] fields = ((IType) rootElement).getFields();
 				IMethod[] methods = ((IType) rootElement).getMethods();
 				for (IField f : fields) {
@@ -329,6 +377,25 @@ public class CodeImpRefactoringManager {
 		return pairs;
 	}
 
+	private IType getSuperType(IType type, IFile sourceFile) throws Exception {
+		// TODO Auto-generated method stub
+		ITypeHierarchy hierachy = type
+				.newSupertypeHierarchy(new NullProgressMonitor());
+		IType[] superTypes = hierachy.getAllSupertypes(type);
+		System.out.println("Super type number: " + superTypes.length);
+		if(superTypes.length == 0) {
+			return null;
+		}
+		for(int i = 0; i < superTypes.length; i++) {
+			System.out.println("Super type " + i + ": " + superTypes[i].getElementName());
+		}
+		if(CodeImpUtils.isInProject(superTypes[0], type.getJavaProject().getProject())) {
+			return superTypes[0];
+		} else {
+			return null;
+		}
+	}
+
 	private RefactoringPair[] getMoveStaticPairs(IJavaElement rootElement) {
 		RefactoringPair[] pairs = null;
 		if (rootElement instanceof IField) {
@@ -336,7 +403,8 @@ public class CodeImpRefactoringManager {
 				RefactoringPair p = new RefactoringPair();
 				p.action = IJavaRefactorings.MOVE_STATIC_MEMBERS;
 				p.element = rootElement;
-				pairs = new RefactoringPair[] {p};
+				p.addition = getTmpClass(rootElement);
+				pairs = new RefactoringPair[] { p };
 			}
 		} else if (rootElement instanceof IType) {
 			try {
@@ -348,6 +416,7 @@ public class CodeImpRefactoringManager {
 						RefactoringPair pair = new RefactoringPair();
 						pair.action = IJavaRefactorings.MOVE_STATIC_MEMBERS;
 						pair.element = f;
+						pair.addition = getTmpClass(rootElement);
 						pairList.add(pair);
 					}
 				}
@@ -359,6 +428,7 @@ public class CodeImpRefactoringManager {
 						RefactoringPair pair = new RefactoringPair();
 						pair.action = IJavaRefactorings.MOVE_STATIC_MEMBERS;
 						pair.element = m;
+						pair.addition = getTmpClass(rootElement);
 						pairList.add(pair);
 					}
 				}
@@ -374,11 +444,13 @@ public class CodeImpRefactoringManager {
 
 	private RefactoringPair[] getMoveMethodPairs(IJavaElement rootElement) {
 		RefactoringPair[] pairs = null;
+		IType dest = getTmpClass(rootElement);
 		if (rootElement instanceof IMethod) {
 			RefactoringPair p = new RefactoringPair();
 			p.action = IJavaRefactorings.MOVE_METHOD;
 			p.element = rootElement;
-			pairs = new RefactoringPair[] {p};
+			p.addition = dest;
+			pairs = new RefactoringPair[] { p };
 		} else if (rootElement instanceof IType) {
 			try {
 				IMethod[] methods = ((IType) rootElement).getMethods();
@@ -390,6 +462,7 @@ public class CodeImpRefactoringManager {
 					RefactoringPair pair = new RefactoringPair();
 					pair.action = IJavaRefactorings.MOVE_METHOD;
 					pair.element = m;
+					pair.addition = dest;
 					pairList.add(pair);
 				}
 				pairs = new RefactoringPair[pairList.size()];
@@ -405,11 +478,13 @@ public class CodeImpRefactoringManager {
 	private RefactoringPair[] getMovePairs(IJavaElement rootElement,
 			IFile sourceFile) throws JavaModelException {
 		RefactoringPair[] pairs = null;
+		IType dest = getTmpClass(rootElement);
 		if (rootElement instanceof IMember) {
 			RefactoringPair p = new RefactoringPair();
 			p.action = IJavaRefactorings.MOVE;
 			p.element = rootElement;
-			pairs = new RefactoringPair[] {p};
+			p.addition = dest;
+			pairs = new RefactoringPair[] { p };
 		} else if (rootElement instanceof IType) {
 			IJavaElement[] elements = CodeImpUtils.getJElementTreeElements(
 					rootElement, sourceFile);
@@ -424,12 +499,44 @@ public class CodeImpRefactoringManager {
 				RefactoringPair pair = new RefactoringPair();
 				pair.action = IJavaRefactorings.MOVE;
 				pair.element = e;
+				pair.addition = dest;
 				pairList.add(pair);
 			}
 			pairs = new RefactoringPair[pairList.size()];
 			pairs = pairList.toArray(pairs);
 		}
 		return pairs;
+	}
+
+	private IType getTmpClass(IJavaElement element) {
+		IPackageFragment pkg = null;
+		if (element instanceof IType) {
+			pkg = ((IType) element).getPackageFragment();
+		} else if (element instanceof IField || element instanceof IMethod) {
+			pkg = ((IType) (element.getParent())).getPackageFragment();
+		}
+		if (pkg == null) {
+			return null;
+		}
+		String className = "TmpClass";
+		String filename = className + ".java";
+		ICompilationUnit icu = pkg.getCompilationUnit(filename);
+		if (icu == null) {
+			String contents = pkg.getElementName() + "\n";
+			contents += ("public class " + className + "{" + "\n");
+			contents += ("\n" + "}");
+
+			try {
+				icu = pkg
+						.createCompilationUnit(filename, contents, false, null);
+			} catch (JavaModelException e) {
+				e.printStackTrace();
+				return null;
+			}
+			System.out.println("Compilation unit: " + icu.getElementName());
+		}
+
+		return icu == null ? null : icu.getType(className);
 	}
 
 	private RefactoringPair[] getExtractClassPairs(IJavaElement rootElement) {
@@ -468,13 +575,13 @@ public class CodeImpRefactoringManager {
 		return pairs;
 	}
 
-	private RefactoringPair[] getDeletePairs(IJavaElement rootElement) {
-		RefactoringPair p = new RefactoringPair();
-		p.action = IJavaRefactorings.DELETE;
-		p.element = rootElement;
-		RefactoringPair[] pairs = new RefactoringPair[] {p};
-		return pairs;
-	}
+//	private RefactoringPair[] getDeletePairs(IJavaElement rootElement) {
+//		RefactoringPair p = new RefactoringPair();
+//		p.action = IJavaRefactorings.DELETE;
+//		p.element = rootElement;
+//		RefactoringPair[] pairs = new RefactoringPair[] { p };
+//		return pairs;
+//	}
 
 	/**
 	 * @param rootElement
@@ -527,7 +634,7 @@ public class CodeImpRefactoringManager {
 				p.element = fields[i];
 				p.addition = "field" + i;
 				pairs[i] = p;
-				
+
 			}
 			return pairs;
 		}
@@ -543,8 +650,11 @@ public class CodeImpRefactoringManager {
 	 * @return
 	 * @throws CoreException
 	 */
-	public Refactoring getRefactoring(RefactoringPair pair, IResource project)
+	public Refactoring getRefactoring(RefactoringPair pair, IFile sourceFile)
 			throws CoreException {
+		if (pair.element == null || pair.action == null) {
+			return null;
+		}
 		RefactoringContribution contribution = RefactoringCore
 				.getRefactoringContribution(pair.action);
 		JavaRefactoringDescriptor descriptor = null;
@@ -552,7 +662,7 @@ public class CodeImpRefactoringManager {
 		RefactoringStatus status = new RefactoringStatus();
 		descriptor = (JavaRefactoringDescriptor) contribution
 				.createDescriptor();
-		descriptor.setProject(project.getName());
+		descriptor.setProject(sourceFile.getProject().getName());
 
 		// TODO Complete refactoring list
 		switch (pair.action) {
@@ -605,13 +715,18 @@ public class CodeImpRefactoringManager {
 			refactoring = createMoveRefactoring(pair, descriptor, status);
 			break;
 		case IJavaRefactorings.MOVE_METHOD:
-			refactoring = createMoveMethodRefactoring(pair, descriptor, status);
+			refactoring = createMoveMethodRefactoring(pair, descriptor, status,
+					contribution);
 			break;
 		case IJavaRefactorings.MOVE_STATIC_MEMBERS:
 			refactoring = createMoveStaticRefactoring(pair, descriptor, status);
 			break;
 		case IJavaRefactorings.PULL_UP:
-			refactoring = createPullUpRefactoring(pair, descriptor, status);
+			try {
+				refactoring = createPullUpRefactoring(pair, descriptor, status);
+			} catch (Exception e) {
+				e.printStackTrace();
+			}
 			break;
 		case IJavaRefactorings.PUSH_DOWN:
 			refactoring = createPushDownRefactoring(pair, descriptor, status);
@@ -631,36 +746,105 @@ public class CodeImpRefactoringManager {
 	}
 
 	private Refactoring createPullUpRefactoring(RefactoringPair pair,
-			JavaRefactoringDescriptor descriptor, RefactoringStatus status) {
+			JavaRefactoringDescriptor descriptor, RefactoringStatus status)
+			throws Exception {
 		PullUpRefactoringProcessor processor = new PullUpRefactoringProcessor(
 				new IMember[] { (IMember) pair.element },
 				JavaPreferencesSettings
 						.getCodeGenerationSettings(((IMember) pair.element)
 								.getJavaProject()));
+		IType superType = (IType) pair.addition;
+		processor.setDestinationType(superType);
+
 		Refactoring refactoring = new ProcessorBasedRefactoring(processor);
 		return refactoring;
 	}
 
 	private Refactoring createMoveStaticRefactoring(RefactoringPair pair,
-			JavaRefactoringDescriptor descriptor, RefactoringStatus status) {
+			JavaRefactoringDescriptor descriptor, RefactoringStatus status)
+			throws JavaModelException {
 		MoveStaticMembersProcessor processor = new MoveStaticMembersProcessor(
 				new IMember[] { (IMember) pair.element },
 				JavaPreferencesSettings
 						.getCodeGenerationSettings(((IMember) pair.element)
 								.getJavaProject()));
+		processor.setDestinationTypeFullyQualifiedName(((IType) pair.addition)
+				.getFullyQualifiedName());
 		Refactoring refactoring = new MoveRefactoring(processor);
 		return refactoring;
 	}
 
 	private Refactoring createMoveMethodRefactoring(RefactoringPair pair,
-			JavaRefactoringDescriptor descriptor, RefactoringStatus status) {
+			JavaRefactoringDescriptor descriptor, RefactoringStatus status,
+			RefactoringContribution contribution) throws CoreException {
+		IMethod method = (IMethod) pair.element;
 		MoveInstanceMethodProcessor processor = new MoveInstanceMethodProcessor(
-				(IMethod) pair.element,
-				JavaPreferencesSettings
-						.getCodeGenerationSettings(((IJavaElement) pair.element)
-								.getJavaProject()));
-		Refactoring refactoring = new MoveRefactoring(processor);
-		return refactoring;
+				method,
+				JavaPreferencesSettings.getCodeGenerationSettings(method
+						.getJavaProject()));
+		// Calculate candidate for the target
+		IVariableBinding[] candidateTargets = calculateTarget((IMethod) pair.element);
+		if (candidateTargets.length == 0) {
+			return null;
+		}
+		processor.setTarget(candidateTargets[0]);
+
+		return new MoveRefactoring(processor);
+	}
+
+	private IVariableBinding[] calculateTarget(IMethod element)
+			throws JavaModelException {
+		CompilationUnitRewrite fSourceRewrite = new CompilationUnitRewrite(
+				element.getCompilationUnit());
+		final MethodDeclaration declaration = ASTNodeSearchUtil
+				.getMethodDeclarationNode(element, fSourceRewrite.getRoot());
+
+		final List<IVariableBinding> candidateTargets = new ArrayList<IVariableBinding>(
+				16);
+		final IMethodBinding method = declaration.resolveBinding();
+		if (method != null) {
+			final ITypeBinding declaring = method.getDeclaringClass();
+			IVariableBinding[] bindings = getArgumentBindings(declaration);
+			ITypeBinding binding = null;
+			for (int index = 0; index < bindings.length; index++) {
+				binding = bindings[index].getType();
+				if ((binding.isClass() || binding.isEnum())
+						&& binding.isFromSource()) {
+					candidateTargets.add(bindings[index]);
+				}
+			}
+			final ReadyOnlyFieldFinder visitor = new ReadyOnlyFieldFinder(
+					declaring);
+			declaration.accept(visitor);
+			bindings = visitor.getDeclaredFields();
+			for (int index = 0; index < bindings.length; index++) {
+				binding = bindings[index].getType();
+				if (binding.isClass() && binding.isFromSource())
+					candidateTargets.add(bindings[index]);
+			}
+		}
+		IVariableBinding[] fCandidateTargets = new IVariableBinding[candidateTargets
+				.size()];
+		candidateTargets.toArray(fCandidateTargets);
+		return fCandidateTargets;
+	}
+
+	@SuppressWarnings("unchecked")
+	private IVariableBinding[] getArgumentBindings(MethodDeclaration declaration) {
+		final List<IVariableBinding> parameters = new ArrayList<IVariableBinding>(
+				declaration.parameters().size());
+		for (final Iterator<SingleVariableDeclaration> iterator = declaration
+				.parameters().iterator(); iterator.hasNext();) {
+			VariableDeclaration variable = iterator.next();
+			IVariableBinding binding = variable.resolveBinding();
+			if (binding == null)
+				return new IVariableBinding[0];
+			parameters.add(binding);
+		}
+		final IVariableBinding[] result = new IVariableBinding[parameters
+				.size()];
+		parameters.toArray(result);
+		return result;
 	}
 
 	private Refactoring createMoveRefactoring(RefactoringPair pair,

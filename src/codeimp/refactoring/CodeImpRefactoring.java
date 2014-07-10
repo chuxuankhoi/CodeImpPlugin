@@ -3,8 +3,7 @@
  */
 package codeimp.refactoring;
 
-import org.eclipse.core.resources.IProject;
-import org.eclipse.core.resources.IResource;
+import org.eclipse.core.resources.IFile;
 import org.eclipse.core.runtime.CoreException;
 import org.eclipse.core.runtime.IProgressMonitor;
 import org.eclipse.core.runtime.NullProgressMonitor;
@@ -14,6 +13,7 @@ import org.eclipse.jdt.core.IJavaElement;
 import org.eclipse.ltk.core.refactoring.Change;
 import org.eclipse.ltk.core.refactoring.IUndoManager;
 import org.eclipse.ltk.core.refactoring.Refactoring;
+import org.eclipse.ltk.core.refactoring.RefactoringStatus;
 
 import codeimp.CodeImpUtils;
 
@@ -28,7 +28,7 @@ public class CodeImpRefactoring {
 	}
 
 	private RefactoringPair pair;
-	private IResource project;
+	private IFile sourceFile;
 
 	/**
 	 * @param element
@@ -36,16 +36,16 @@ public class CodeImpRefactoring {
 	 * @param project
 	 */
 	public CodeImpRefactoring(IJavaElement element, String action,
-			IResource project) {
+			IFile file) {
 		this.pair = new RefactoringPair();
 		this.pair.element = element;
 		this.pair.action = action;
-		this.project = project;
+		this.sourceFile = file;
 	}
 
-	public CodeImpRefactoring(RefactoringPair refactoringPair, IProject project) {
+	public CodeImpRefactoring(RefactoringPair refactoringPair, IFile file) {
 		this.pair = refactoringPair;
-		this.project = project;
+		this.sourceFile = file;
 	}
 
 	/**
@@ -72,17 +72,22 @@ public class CodeImpRefactoring {
 				.getManager();
 
 		Refactoring refactoring = refactoringManager.getRefactoring(pair,
-				project);
+				sourceFile);
 		if (refactoring == null) {
 			printLog("No refactoring is created for: "
 					+ pair.element.toString());
 			throw new OperationCanceledException();
 		}
 		IProgressMonitor monitor = new NullProgressMonitor();
-		if (refactoring.checkInitialConditions(monitor).hasFatalError()) {
+		RefactoringStatus status = new RefactoringStatus();
+		status = refactoring.checkInitialConditions(monitor);
+		if (status.hasFatalError()) {
+			printLog(status.getMessageMatchingSeverity(RefactoringStatus.FATAL));
 			throw new OperationCanceledException();
 		}
-		if (refactoring.checkFinalConditions(monitor).hasFatalError()) {
+		status = refactoring.checkFinalConditions(monitor);
+		if (status.hasFatalError()) {
+			printLog(status.getMessageMatchingSeverity(RefactoringStatus.FATAL));
 			throw new OperationCanceledException();
 		}
 		Change change = refactoring.createChange(monitor);

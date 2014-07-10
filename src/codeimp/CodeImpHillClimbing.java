@@ -9,6 +9,7 @@ import org.eclipse.jdt.core.IJavaElement;
 import org.eclipse.jdt.core.IMethod;
 import org.eclipse.jdt.core.IType;
 import org.eclipse.jdt.core.JavaModelException;
+import org.eclipse.jdt.core.refactoring.IJavaRefactorings;
 import org.eclipse.jface.text.ITextSelection;
 import org.eclipse.ui.IWorkbenchWindow;
 
@@ -86,19 +87,31 @@ public class CodeImpHillClimbing extends CodeImpAbstract {
 				if (pairs == null) {
 					continue;
 				}
+				printLog("Pairs number: " + pairs.length);
 				for (int k = 0; k < pairs.length; k++) {
 					printLog("Old score: " + oldScore);
-					printLog("Trying " + actionList[i] + " with root "
-							+ rootElements[j].getElementName()
-							+ " pair number " + k);
+					if (pairs[k].element instanceof IJavaElement) {
+						printLog("Trying "
+								+ actionList[i]
+								+ " with root "
+								+ rootElements[j].getElementName()
+								+ " pair element: "
+								+ ((IJavaElement) pairs[k].element)
+										.getElementName());
+					} else if(pairs[k].action == IJavaRefactorings.EXTRACT_METHOD) {
+						printLog("Trying " + actionList[i] + " with root "
+								+ rootElements[j].getElementName()
+								+ " pair of " + ((ITextSelection)(pairs[k].element)).getText());
+					}
 					CodeImpRefactoring refactoring = new CodeImpRefactoring(
-							pairs[k], sourceFile.getProject());
+							pairs[k], sourceFile);
 					totalRefactoring++;
 					try {
 						refactoring.process(undoMan);
 						successfullRefactoring++;
-					} catch (Exception e1) {
+					} catch (Exception e) {
 						printLog("Cannot execute the refactoring");
+						e.printStackTrace();
 					}
 					curScore = calCurrentScore();
 					if (curScore < oldScore) {
@@ -116,9 +129,9 @@ public class CodeImpHillClimbing extends CodeImpAbstract {
 						} catch (InterruptedException e) {
 							// Do nothing
 						}
-						if (curScore > oldScore) {
-							break;
-						}
+//						if (curScore > oldScore) {
+//							break;
+//						}
 					}
 				}
 			}
