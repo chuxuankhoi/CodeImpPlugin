@@ -14,8 +14,8 @@ import org.eclipse.jface.text.ITextSelection;
 import org.eclipse.ui.IWorkbenchWindow;
 
 import codeimp.graders.IGrader;
-import codeimp.graders.LCOM1Score;
-import codeimp.graders.LongMethodGrader;
+import codeimp.graders.LCOM2;
+import codeimp.graders.LongMethod;
 import codeimp.refactoring.CodeImpRefactoring;
 import codeimp.refactoring.CodeImpRefactoringManager;
 import codeimp.refactoring.RefactoringPair;
@@ -45,10 +45,10 @@ public class CodeImpHillClimbing extends CodeImpAbstract {
 		int totalRefactoring = 0;
 		double curScore;
 		curScore = calCurrentScore();
-		// if (curScore <= 0) {
-		// printLog("Plug-in cannot judge the source code.");
-		// return;
-		// }
+		if (curScore <= 0) {
+			printLog("Plug-in cannot judge the source code.");
+			return;
+		}
 		double oldScore = curScore;
 		if (undoMan == null)
 			undoMan = new CodeImpUndoManager();
@@ -129,9 +129,9 @@ public class CodeImpHillClimbing extends CodeImpAbstract {
 						} catch (InterruptedException e) {
 							// Do nothing
 						}
-//						if (curScore > oldScore) {
-//							break;
-//						}
+						if (curScore > oldScore) {
+							break;
+						}
 					}
 				}
 			}
@@ -148,13 +148,13 @@ public class CodeImpHillClimbing extends CodeImpAbstract {
 		if (element instanceof IType) {
 			if (CodeImpUtils.isInProject((IType) element,
 					sourceFile.getProject())) {
-				grader = new LCOM1Score((IType) element, sourceFile);
+				grader = new LCOM2((IType) element, sourceFile);
 
 			}
 		} else if (element instanceof IMethod) {
 			if (CodeImpUtils.isInProject((IMethod) element,
 					sourceFile.getProject())) {
-				grader = new LongMethodGrader((IMethod) element);
+				grader = new LongMethod((IMethod) element);
 			}
 		}
 

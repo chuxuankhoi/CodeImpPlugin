@@ -92,7 +92,7 @@ public class CodeImpRefactoringManager {
 				}
 			}
 		}
-		// actionsList.add(IJavaRefactorings.PUSH_DOWN);
+		// actionsList.add(IJavaRefactorings.MOVE_STATIC_MEMBERS);
 
 	}
 
@@ -155,7 +155,7 @@ public class CodeImpRefactoringManager {
 			case IJavaRefactorings.COPY:
 				break;
 			case IJavaRefactorings.DELETE:
-//				pairs = getDeletePairs(rootElement);
+				// pairs = getDeletePairs(rootElement);
 				break;
 			case IJavaRefactorings.ENCAPSULATE_FIELD:
 				break;
@@ -378,18 +378,19 @@ public class CodeImpRefactoringManager {
 	}
 
 	private IType getSuperType(IType type, IFile sourceFile) throws Exception {
-		// TODO Auto-generated method stub
 		ITypeHierarchy hierachy = type
 				.newSupertypeHierarchy(new NullProgressMonitor());
 		IType[] superTypes = hierachy.getAllSupertypes(type);
 		System.out.println("Super type number: " + superTypes.length);
-		if(superTypes.length == 0) {
+		if (superTypes.length == 0) {
 			return null;
 		}
-		for(int i = 0; i < superTypes.length; i++) {
-			System.out.println("Super type " + i + ": " + superTypes[i].getElementName());
+		for (int i = 0; i < superTypes.length; i++) {
+			System.out.println("Super type " + i + ": "
+					+ superTypes[i].getElementName());
 		}
-		if(CodeImpUtils.isInProject(superTypes[0], type.getJavaProject().getProject())) {
+		if (CodeImpUtils.isInProject(superTypes[0], type.getJavaProject()
+				.getProject())) {
 			return superTypes[0];
 		} else {
 			return null;
@@ -397,17 +398,23 @@ public class CodeImpRefactoringManager {
 	}
 
 	private RefactoringPair[] getMoveStaticPairs(IJavaElement rootElement) {
+		System.out.println("Get static members' pair");
 		RefactoringPair[] pairs = null;
-		if (rootElement instanceof IField) {
-			if (Modifier.isStatic(rootElement.getClass().getModifiers())) {
-				RefactoringPair p = new RefactoringPair();
-				p.action = IJavaRefactorings.MOVE_STATIC_MEMBERS;
-				p.element = rootElement;
-				p.addition = getTmpClass(rootElement);
-				pairs = new RefactoringPair[] { p };
-			}
-		} else if (rootElement instanceof IType) {
-			try {
+		final IType dest = getTmpClass(rootElement);
+		if (dest == null) {
+			System.out.println("Cannot create destination.");
+			return pairs;
+		}
+		try {
+			if (rootElement instanceof IField || rootElement instanceof IMethod) {
+				if (CodeImpUtils.isStatic(rootElement)) {
+					RefactoringPair p = new RefactoringPair();
+					p.action = IJavaRefactorings.MOVE_STATIC_MEMBERS;
+					p.element = rootElement;
+					p.addition = dest;
+					pairs = new RefactoringPair[] { p };
+				}
+			} else if (rootElement instanceof IType) {
 				IField[] fields = ((IType) rootElement).getFields();
 				IMethod[] methods = ((IType) rootElement).getMethods();
 				ArrayList<RefactoringPair> pairList = new ArrayList<RefactoringPair>();
@@ -416,7 +423,7 @@ public class CodeImpRefactoringManager {
 						RefactoringPair pair = new RefactoringPair();
 						pair.action = IJavaRefactorings.MOVE_STATIC_MEMBERS;
 						pair.element = f;
-						pair.addition = getTmpClass(rootElement);
+						pair.addition = dest;
 						pairList.add(pair);
 					}
 				}
@@ -428,16 +435,16 @@ public class CodeImpRefactoringManager {
 						RefactoringPair pair = new RefactoringPair();
 						pair.action = IJavaRefactorings.MOVE_STATIC_MEMBERS;
 						pair.element = m;
-						pair.addition = getTmpClass(rootElement);
+						pair.addition = dest;
 						pairList.add(pair);
 					}
 				}
 				pairs = new RefactoringPair[pairList.size()];
 				pairs = pairList.toArray(pairs);
-			} catch (JavaModelException e) {
-				e.printStackTrace();
-				return null;
 			}
+		} catch (JavaModelException e) {
+			e.printStackTrace();
+			return null;
 		}
 		return pairs;
 	}
@@ -496,6 +503,9 @@ public class CodeImpRefactoringManager {
 				if (e instanceof IMethod && ((IMethod) e).isMainMethod()) {
 					continue;
 				}
+				if (e == rootElement) {
+					continue; // don't move the class
+				}
 				RefactoringPair pair = new RefactoringPair();
 				pair.action = IJavaRefactorings.MOVE;
 				pair.element = e;
@@ -516,25 +526,32 @@ public class CodeImpRefactoringManager {
 			pkg = ((IType) (element.getParent())).getPackageFragment();
 		}
 		if (pkg == null) {
+			System.out.println("Cannot get the package information");
 			return null;
 		}
-		String className = "TmpClass";
+		
+		String className = "TmpClass_" + System.currentTimeMillis();
 		String filename = className + ".java";
-		ICompilationUnit icu = pkg.getCompilationUnit(filename);
-		if (icu == null) {
+		ICompilationUnit icu = null;
+//		icu = pkg.getCompilationUnit(filename);
+//		if (icu != null) {
+//			System.err.println("TmpClass.java is existing at "
+//					+ icu.getPath().toString() + ". Error may occur.");
+//		}
+//		if (icu == null) {
 			String contents = pkg.getElementName() + "\n";
 			contents += ("public class " + className + "{" + "\n");
 			contents += ("\n" + "}");
 
 			try {
 				icu = pkg
-						.createCompilationUnit(filename, contents, false, null);
+						.createCompilationUnit(filename, contents, true, null);
 			} catch (JavaModelException e) {
 				e.printStackTrace();
 				return null;
 			}
 			System.out.println("Compilation unit: " + icu.getElementName());
-		}
+//		}
 
 		return icu == null ? null : icu.getType(className);
 	}
@@ -575,13 +592,13 @@ public class CodeImpRefactoringManager {
 		return pairs;
 	}
 
-//	private RefactoringPair[] getDeletePairs(IJavaElement rootElement) {
-//		RefactoringPair p = new RefactoringPair();
-//		p.action = IJavaRefactorings.DELETE;
-//		p.element = rootElement;
-//		RefactoringPair[] pairs = new RefactoringPair[] { p };
-//		return pairs;
-//	}
+	// private RefactoringPair[] getDeletePairs(IJavaElement rootElement) {
+	// RefactoringPair p = new RefactoringPair();
+	// p.action = IJavaRefactorings.DELETE;
+	// p.element = rootElement;
+	// RefactoringPair[] pairs = new RefactoringPair[] { p };
+	// return pairs;
+	// }
 
 	/**
 	 * @param rootElement

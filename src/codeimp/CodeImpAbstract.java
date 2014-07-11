@@ -36,7 +36,6 @@ public abstract class CodeImpAbstract {
 			elements = CodeImpUtils.identifyElements(
 					codeSelection.getText(), sourceFile);
 		} catch (JavaModelException e) {
-			// TODO Auto-generated catch block
 			e.printStackTrace();
 		}
 		if (elements == null) {

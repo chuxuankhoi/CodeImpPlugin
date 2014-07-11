@@ -15,12 +15,12 @@ import codeimp.CodeImpUtils;
  * @author chuxuankhoi
  * 
  */
-public class LCOM1Score implements IGrader {
+public class LCOM2 implements IGrader {
 
 	private IType scoredClass;
 	private IFile containingFile;
 
-	public LCOM1Score(IType type, IFile file) {
+	public LCOM2(IType type, IFile file) {
 		scoredClass = type;
 		containingFile = file;
 	}
@@ -54,7 +54,7 @@ public class LCOM1Score implements IGrader {
 					}
 				}
 			}
-			// Calculate LCOM1
+			// Calculate LCOM2
 			if (indMethodsNum - depMethodsNum > 0) {
 				return ((double) indMethodsNum - (double) depMethodsNum)
 						/ (double) consideredMethodsNum;

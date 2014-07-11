@@ -12,7 +12,7 @@ import codeimp.CodeImpUtils;
  * @author chuxuankhoi
  *
  */
-public class LongMethodGrader implements IGrader {
+public class LongMethod implements IGrader {
 	
 	private final static int MAX_LOC = 100;
 
@@ -21,7 +21,7 @@ public class LongMethodGrader implements IGrader {
 	/**
 	 * @param method
 	 */
-	public LongMethodGrader(IMethod method) {
+	public LongMethod(IMethod method) {
 		this.method = method;
 	}
 
