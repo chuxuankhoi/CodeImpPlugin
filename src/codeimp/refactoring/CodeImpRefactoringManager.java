@@ -381,13 +381,8 @@ public class CodeImpRefactoringManager {
 		ITypeHierarchy hierachy = type
 				.newSupertypeHierarchy(new NullProgressMonitor());
 		IType[] superTypes = hierachy.getAllSupertypes(type);
-		System.out.println("Super type number: " + superTypes.length);
 		if (superTypes.length == 0) {
 			return null;
-		}
-		for (int i = 0; i < superTypes.length; i++) {
-			System.out.println("Super type " + i + ": "
-					+ superTypes[i].getElementName());
 		}
 		if (CodeImpUtils.isInProject(superTypes[0], type.getJavaProject()
 				.getProject())) {
@@ -398,11 +393,10 @@ public class CodeImpRefactoringManager {
 	}
 
 	private RefactoringPair[] getMoveStaticPairs(IJavaElement rootElement) {
-		System.out.println("Get static members' pair");
 		RefactoringPair[] pairs = null;
 		final IType dest = getTmpClass(rootElement);
 		if (dest == null) {
-			System.out.println("Cannot create destination.");
+			CodeImpUtils.printLog("Cannot create destination.");
 			return pairs;
 		}
 		try {
@@ -526,32 +520,23 @@ public class CodeImpRefactoringManager {
 			pkg = ((IType) (element.getParent())).getPackageFragment();
 		}
 		if (pkg == null) {
-			System.out.println("Cannot get the package information");
+			CodeImpUtils.printLog("Cannot get the package information");
 			return null;
 		}
-		
+
 		String className = "TmpClass_" + System.currentTimeMillis();
 		String filename = className + ".java";
 		ICompilationUnit icu = null;
-//		icu = pkg.getCompilationUnit(filename);
-//		if (icu != null) {
-//			System.err.println("TmpClass.java is existing at "
-//					+ icu.getPath().toString() + ". Error may occur.");
-//		}
-//		if (icu == null) {
-			String contents = pkg.getElementName() + "\n";
-			contents += ("public class " + className + "{" + "\n");
-			contents += ("\n" + "}");
+		String contents = pkg.getElementName() + "\n";
+		contents += ("public class " + className + "{" + "\n");
+		contents += ("\n" + "}");
 
-			try {
-				icu = pkg
-						.createCompilationUnit(filename, contents, true, null);
-			} catch (JavaModelException e) {
-				e.printStackTrace();
-				return null;
-			}
-			System.out.println("Compilation unit: " + icu.getElementName());
-//		}
+		try {
+			icu = pkg.createCompilationUnit(filename, contents, true, null);
+		} catch (JavaModelException e) {
+			e.printStackTrace();
+			return null;
+		}
 
 		return icu == null ? null : icu.getType(className);
 	}

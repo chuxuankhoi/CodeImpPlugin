@@ -20,11 +20,6 @@ public class LCOM5 implements IGrader {
 	private IType type;
 	private IFile file;
 
-	/*
-	 * (non-Javadoc)
-	 * 
-	 * @see codeimp.graders.IGrader#getScore()
-	 */
 	@Override
 	public double getScore() {
 		double a = 0; // summation of the number of distinct attributes accessed
@@ -57,8 +52,7 @@ public class LCOM5 implements IGrader {
 		}
 
 		// Calculate LCOM5
-		double score = (a - k * l) / (l - k * l);
-		return score;
+		return (l - k * l) != 0 ? (a - k * l) / (l - k * l) :  0;
 	}
 
 	/**

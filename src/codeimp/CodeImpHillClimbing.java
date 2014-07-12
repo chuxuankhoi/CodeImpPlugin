@@ -15,7 +15,9 @@ import org.eclipse.ui.IWorkbenchWindow;
 
 import codeimp.graders.IGrader;
 import codeimp.graders.LCOM2;
+import codeimp.graders.LCOM5;
 import codeimp.graders.LongMethod;
+import codeimp.graders.TCC;
 import codeimp.refactoring.CodeImpRefactoring;
 import codeimp.refactoring.CodeImpRefactoringManager;
 import codeimp.refactoring.RefactoringPair;
@@ -145,20 +147,26 @@ public class CodeImpHillClimbing extends CodeImpAbstract {
 		// TODO Select appropriate scoring function for element based on its
 		// type
 		IGrader grader = null;
+		double score = 0;
 		if (element instanceof IType) {
 			if (CodeImpUtils.isInProject((IType) element,
 					sourceFile.getProject())) {
 				grader = new LCOM2((IType) element, sourceFile);
-
+				score += grader == null ? 0 : grader.getScore();
+				grader = new LCOM5((IType) element, sourceFile);
+				score += grader == null ? 0 : grader.getScore();
+				grader = new TCC((IType) element, sourceFile);
+				score += grader == null ? 0 : grader.getScore();
 			}
 		} else if (element instanceof IMethod) {
 			if (CodeImpUtils.isInProject((IMethod) element,
 					sourceFile.getProject())) {
 				grader = new LongMethod((IMethod) element);
+				score += grader == null ? 0 : grader.getScore();
 			}
 		}
 
-		return grader == null ? 0 : grader.getScore();
+		return score;
 	}
 
 }

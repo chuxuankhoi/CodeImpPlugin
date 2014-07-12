@@ -170,7 +170,7 @@ public final class CodeImpUtils {
 		ArrayList<IField> usedField = new ArrayList<IField>();
 		IJavaElement[] elements = CodeImpUtils.identifyElements(method1Code,
 				file);
-		if(elements == null) {
+		if (elements == null) {
 			return null;
 		}
 		for (IJavaElement e : elements) {
@@ -200,6 +200,50 @@ public final class CodeImpUtils {
 	}
 
 	/**
+	 * Extract method to look for the methods used
+	 * 
+	 * @param method
+	 *            method analysed
+	 * @param referentMethods
+	 *            list of fields that may be used in the method
+	 * @throws JavaModelException
+	 */
+	public static IMethod[] getMethodsInMethod(IMethod method,
+			IMethod[] referentMethods, IFile file) throws JavaModelException {
+		String method1Code = method.getSource();
+		ArrayList<IMethod> usedMethods = new ArrayList<IMethod>();
+		IJavaElement[] elements = CodeImpUtils.identifyElements(method1Code,
+				file);
+		if (elements == null) {
+			return null;
+		}
+		for (IJavaElement e : elements) {
+			if (!(e instanceof IMethod))
+				continue;
+			for (IMethod f : referentMethods) {
+				if (((IMethod) e).equals(f)) {
+					// before getting field, avoid duplicated
+					boolean existed = false;
+					for (int i = 0; i < usedMethods.size(); i++) {
+						if (e.getElementName().equals(
+								usedMethods.get(i).getElementName())) {
+							existed = true;
+							break;
+						}
+					}
+					if (!existed) {
+						usedMethods.add((IMethod) e);
+					}
+				}
+			}
+		}
+
+		IMethod[] retArray = new IMethod[usedMethods.size()];
+		usedMethods.toArray(retArray);
+		return retArray;
+	}
+
+	/**
 	 * Print message with time stamp
 	 * 
 	 * @param log
@@ -208,32 +252,108 @@ public final class CodeImpUtils {
 	public static void printLog(String log) {
 		System.out.println(System.currentTimeMillis() + " - " + log);
 	}
-	
+
 	public static String getBody(IMethod method) throws JavaModelException {
 		String body = method.getSource();
-		if(body == null) {
+		if (body == null) {
 			return null;
 		}
 		int firstIndex = body.indexOf("{");
 		int lastIndex = body.lastIndexOf("}");
-		if(firstIndex < 0 || lastIndex < 0) {
+		if (firstIndex < 0 || lastIndex < 0) {
 			return null;
 		}
 		body = body.substring(firstIndex + 1, lastIndex);
 		return body;
 	}
-	
-	public static boolean isStatic(IJavaElement element) throws JavaModelException {
-		if(element instanceof IField) {
+
+	public static boolean isStatic(IJavaElement element)
+			throws JavaModelException {
+		if (element instanceof IField) {
 			return (((IField) element).getSource().indexOf("static ") > -1);
 		} else if (element instanceof IMethod) {
 			String source = ((IMethod) element).getSource();
-			if(source == null) {
+			if (source == null) {
 				return false;
 			}
 			source = source.substring(0, source.indexOf("{"));
 			return (source.indexOf("static ") > -1);
 		}
 		return false;
+	}
+
+	public static int combination(int n, int k) {
+		return permutation(n) / (permutation(k) * permutation(n - k));
+	}
+
+	public static int permutation(int n) {
+		if (n <= 1) {
+			return 1;
+		}
+		return n * permutation(n - 1);
+	}
+
+	/**
+	 * Calculate the number of fields that 2 methods use
+	 * 
+	 * @param method1
+	 * @param method2
+	 * @param fields
+	 * @param file
+	 * @param transitively
+	 *            consider the fields that used by methods used in the given
+	 *            methods
+	 * @return
+	 * @throws JavaModelException
+	 */
+	public static int calculateSharedFields(IMethod method1, IMethod method2,
+			IField[] fields, IMethod[] methods, IFile file, boolean transitively)
+			throws JavaModelException {
+		// Extract fields used in methods
+		IField[] usedFields1 = CodeImpUtils.getFieldsInMethod(method1, fields,
+				file);
+		IField[] usedFields2 = CodeImpUtils.getFieldsInMethod(method2, fields,
+				file);
+		if (usedFields1 == null || usedFields2 == null) {
+			return 0;
+		}
+
+		// Get number of intersections between 2 fields
+		int ret = 0;
+		for (IField f1 : usedFields1) {
+			for (IField f2 : usedFields2) {
+				if (f1.equals(f2)) {
+					ret++;
+				}
+			}
+		}
+
+		if (transitively) {
+			if (methods != null) {
+				IMethod[] usedMethods = getMethodsInMethod(method1, methods,
+						file);
+				if (usedMethods != null) {
+					for (IMethod m : usedMethods) {
+						if (m == method1 || m == method2) {
+							continue;
+						}
+						ret += calculateSharedFields(m, method2, fields, null,
+								file, false);
+					}
+				}
+				usedMethods = getMethodsInMethod(method2, methods, file);
+				if (usedMethods != null) {
+					for (IMethod m : usedMethods) {
+						if (m == method1 || m == method2) {
+							continue;
+						}
+						ret += calculateSharedFields(m, method1, fields, null,
+								file, false);
+					}
+				}
+			}
+		}
+
+		return ret;
 	}
 }

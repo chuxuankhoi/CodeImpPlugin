@@ -47,7 +47,8 @@ public class LCOM2 implements IGrader {
 					if (methods[j].isMainMethod()) {
 						continue;
 					}
-					if (similar(methods[i], methods[j], fields, containingFile) == 0) {
+					if (CodeImpUtils.calculateSharedFields(methods[i],
+							methods[j], fields, null, containingFile, false) == 0) {
 						indMethodsNum++;
 					} else {
 						depMethodsNum++;
@@ -65,38 +66,5 @@ public class LCOM2 implements IGrader {
 			e.printStackTrace();
 			return 0;
 		}
-	}
-
-	/**
-	 * Calculate number of fields used by both 2 methods
-	 * 
-	 * @param method1
-	 * @param method2
-	 * @param fields
-	 * @return
-	 * @throws JavaModelException
-	 */
-	private int similar(IMethod method1, IMethod method2, IField[] fields,
-			IFile file) throws JavaModelException {
-		// Extract fields used in methods
-		IField[] usedFields1 = CodeImpUtils.getFieldsInMethod(method1, fields,
-				file);
-		IField[] usedFields2 = CodeImpUtils.getFieldsInMethod(method2, fields,
-				file);
-		if(usedFields1 == null || usedFields2 == null) {
-			return 0;
-		}
-
-		// Get number of intersections between 2 fields
-		int ret = 0;
-		for (IField f1 : usedFields1) {
-			for (IField f2 : usedFields2) {
-				if (f1.equals(f2)) {
-					ret++;
-				}
-			}
-		}
-
-		return ret;
 	}
 }
