@@ -62,4 +62,10 @@ public abstract class CodeImpAbstract {
 		return "";
 	}
 
+	/**
+	 * Get refactoring actions' result in printable format
+	 * @return
+	 */
+	public abstract String getPrintedResults();
+
 }

@@ -80,8 +80,8 @@ public class CodeImpActionDelegate implements IWorkbenchWindowActionDelegate {
 			protected IStatus run(IProgressMonitor monitor) {
 				improvementJob.runImprovement();
 				// Display the analysis and confirm the changed blocks
-				System.out.println("Refactoring used: ");
-				System.out.println(improvementJob.getRefactoringHistory());
+				System.out.println("Results:");
+				System.out.println(improvementJob.getPrintedResults());
 				System.out.println("Code improvement completed.");
 				return Status.OK_STATUS;
 			}

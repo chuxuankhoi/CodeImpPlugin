@@ -66,6 +66,7 @@ import codeimp.CodeImpUtils;
 public class CodeImpRefactoringManager {
 
 	private static CodeImpRefactoringManager manager = null;
+	private static IType tmpClass = null;
 
 	private ArrayList<String> actionsList = null;
 
@@ -513,32 +514,47 @@ public class CodeImpRefactoringManager {
 	}
 
 	private IType getTmpClass(IJavaElement element) {
-		IPackageFragment pkg = null;
-		if (element instanceof IType) {
-			pkg = ((IType) element).getPackageFragment();
-		} else if (element instanceof IField || element instanceof IMethod) {
-			pkg = ((IType) (element.getParent())).getPackageFragment();
-		}
-		if (pkg == null) {
-			CodeImpUtils.printLog("Cannot get the package information");
-			return null;
-		}
+		if (tmpClass == null) {
+			IPackageFragment pkg = null;
+			if (element instanceof IType) {
+				pkg = ((IType) element).getPackageFragment();
+			} else if (element instanceof IField || element instanceof IMethod) {
+				pkg = ((IType) (element.getParent())).getPackageFragment();
+			}
+			if (pkg == null) {
+				CodeImpUtils.printLog("Cannot get the package information");
+				return null;
+			}
 
-		String className = "TmpClass_" + System.currentTimeMillis();
-		String filename = className + ".java";
-		ICompilationUnit icu = null;
-		String contents = pkg.getElementName() + "\n";
-		contents += ("public class " + className + "{" + "\n");
-		contents += ("\n" + "}");
+			String className = "TmpClass_" + System.currentTimeMillis();
+			String filename = className + ".java";
+			ICompilationUnit icu = null;
+			String contents = pkg.getElementName() + "\n";
+			contents += ("public class " + className + "{" + "\n");
+			contents += ("\n" + "}");
 
+			try {
+				icu = pkg.createCompilationUnit(filename, contents, true, null);
+				tmpClass = icu == null ? null : icu.getType(className);
+			} catch (JavaModelException e) {
+				e.printStackTrace();
+			}
+		}
+		return tmpClass;
+	}
+	
+	public void deleteTmpClass() {
+		if (tmpClass == null) {
+			return;
+		}
+		ICompilationUnit icu = tmpClass.getCompilationUnit();
 		try {
-			icu = pkg.createCompilationUnit(filename, contents, true, null);
+			icu.delete(true, null);
 		} catch (JavaModelException e) {
+			// TODO Auto-generated catch block
 			e.printStackTrace();
-			return null;
 		}
-
-		return icu == null ? null : icu.getType(className);
+		tmpClass = null;
 	}
 
 	private RefactoringPair[] getExtractClassPairs(IJavaElement rootElement) {

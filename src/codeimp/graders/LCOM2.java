@@ -56,7 +56,7 @@ public class LCOM2 implements IGrader {
 				}
 			}
 			// Calculate LCOM2
-			if (indMethodsNum - depMethodsNum > 0) {
+			if (indMethodsNum - depMethodsNum > 0 && consideredMethodsNum != 0) {
 				return ((double) indMethodsNum - (double) depMethodsNum)
 						/ (double) consideredMethodsNum;
 			} else {

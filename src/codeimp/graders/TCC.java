@@ -33,8 +33,7 @@ public class TCC implements IGrader {
 		sp = calculateConnectedPairs(methods, fields, file);
 
 		// Calculate TCC
-		double score = sp / np;
-		return score;
+		return sp / np;
 	}
 
 	private int calculateConnectedPairs(IMethod[] methods, IField[] fields,

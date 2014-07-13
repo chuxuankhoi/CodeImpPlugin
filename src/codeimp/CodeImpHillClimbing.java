@@ -3,6 +3,11 @@
  */
 package codeimp;
 
+import java.util.HashMap;
+import java.util.Iterator;
+import java.util.Map;
+import java.util.Map.Entry;
+
 import org.eclipse.core.resources.IFile;
 import org.eclipse.core.runtime.CoreException;
 import org.eclipse.jdt.core.IJavaElement;
@@ -31,6 +36,9 @@ import codeimp.undo.CodeImpUndoManager;
  */
 public class CodeImpHillClimbing extends CodeImpAbstract {
 
+	private Map<String, Double> results = new HashMap<String, Double>();
+	private double startScore = 0;
+
 	public CodeImpHillClimbing(ITextSelection selectedCode, IFile file,
 			IWorkbenchWindow currentWindow) {
 		codeSelection = selectedCode;
@@ -47,6 +55,7 @@ public class CodeImpHillClimbing extends CodeImpAbstract {
 		int totalRefactoring = 0;
 		double curScore;
 		curScore = calCurrentScore();
+		startScore = curScore;
 		if (curScore <= 0) {
 			printLog("Plug-in cannot judge the source code.");
 			return;
@@ -100,10 +109,14 @@ public class CodeImpHillClimbing extends CodeImpAbstract {
 								+ " pair element: "
 								+ ((IJavaElement) pairs[k].element)
 										.getElementName());
-					} else if(pairs[k].action == IJavaRefactorings.EXTRACT_METHOD) {
-						printLog("Trying " + actionList[i] + " with root "
+					} else if (pairs[k].action == IJavaRefactorings.EXTRACT_METHOD) {
+						printLog("Trying "
+								+ actionList[i]
+								+ " with root "
 								+ rootElements[j].getElementName()
-								+ " pair of " + ((ITextSelection)(pairs[k].element)).getText());
+								+ " pair of "
+								+ ((ITextSelection) (pairs[k].element))
+										.getText());
 					}
 					CodeImpRefactoring refactoring = new CodeImpRefactoring(
 							pairs[k], sourceFile);
@@ -132,15 +145,33 @@ public class CodeImpHillClimbing extends CodeImpAbstract {
 							// Do nothing
 						}
 						if (curScore > oldScore) {
+							finishAction(actionList[i]);
 							break;
 						}
 					}
 				}
 			}
+			finishAction(actionList[i]);
 		}
+		refManager.deleteTmpClass();
 		printLog("Improvement completed. Final score: " + calCurrentScore());
 		printLog("Successfull refactoring: " + successfullRefactoring + "/"
 				+ totalRefactoring);
+	}
+
+	private void finishAction(String action) {
+		// TODO Get the improvement of the refactoring action and undo all
+		// refactoring
+		double curScore = calCurrentScore();
+		double impScore = startScore - curScore;
+		results.put(action, new Double(impScore));
+
+		while (undoMan.anythingToUndo()) {
+			try {
+				undoMan.performUndo(null, null);
+			} catch (CoreException e) {
+			}
+		}
 	}
 
 	protected double scoreElement(IJavaElement element) {
@@ -167,6 +198,24 @@ public class CodeImpHillClimbing extends CodeImpAbstract {
 		}
 
 		return score;
+	}
+
+	/**
+	 * @see CodeImpAbstract
+	 */
+	@Override
+	public String getPrintedResults() {
+		String ret = "";
+		Map<String, Double> sortedResults = CodeImpUtils.sortByComparator(
+				results, CodeImpUtils.DESC);
+		Iterator<Entry<String, Double>> it = sortedResults.entrySet().iterator();
+		while (it.hasNext()) {
+			Map.Entry<String, Double> e = it.next();
+			String result = e.getKey() + " - " + e.getValue().toString();
+			ret += result;
+			ret += "\n";
+		}
+		return ret;
 	}
 
 }
