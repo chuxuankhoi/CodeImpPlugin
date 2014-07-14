@@ -9,7 +9,6 @@ import org.eclipse.swt.layout.GridData;
 import org.eclipse.swt.layout.GridLayout;
 import org.eclipse.swt.widgets.Composite;
 import org.eclipse.swt.widgets.Display;
-import org.eclipse.swt.widgets.ProgressBar;
 import org.eclipse.ui.IWorkbenchWindow;
 
 import codeimp.CodeImpAbstract;
@@ -20,7 +19,7 @@ public class AnalysisPage extends WizardPage {
 	private Composite container = null;
 
 	private Composite progressBarComposite = null;
-	private ProgressBar progressBar = null;
+	private CodeImpProgressBar progressBar = null;
 	protected int processBarStyle = SWT.SMOOTH; // process bar style
 
 	private ITextSelection textSelection;
@@ -55,20 +54,32 @@ public class AnalysisPage extends WizardPage {
 				GridData.CENTER, true, false));
 		progressBarComposite.setLayout(new FillLayout());
 
-		progressBar = new ProgressBar(progressBarComposite, processBarStyle);
+		// progressBar = new ProgressBar(progressBarComposite, processBarStyle);
+		progressBar = new CodeImpProgressBar(progressBarComposite,
+				processBarStyle);
+		progressBar.setParentPage(this);
 
 		setControl(container);
-		
-		improvementJob = new CodeImpHillClimbing(textSelection, curEditorFile, window);
+
+		improvementJob = new CodeImpHillClimbing(textSelection, curEditorFile,
+				window);
 		improvementJob.runImprovement(progressBar, display);
 
-		setPageComplete(true);
+		setPageComplete(false);
 	}
 
 	public void tryCancel() {
-		Thread.currentThread().interrupt();
-		if(improvementJob != null) {
+		if (improvementJob != null) {
 			improvementJob.cancel();
+		}
+	}
+
+	@Override
+	public boolean canFlipToNextPage() {
+		if (progressBar.getSelection() < progressBar.getMaximum()) {
+			return false;
+		} else {
+			return super.canFlipToNextPage();
 		}
 	}
 

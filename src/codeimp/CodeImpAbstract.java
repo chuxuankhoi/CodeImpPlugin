@@ -8,10 +8,10 @@ import org.eclipse.jdt.core.JavaModelException;
 import org.eclipse.jface.text.ITextSelection;
 import org.eclipse.ltk.core.refactoring.IUndoManager;
 import org.eclipse.swt.widgets.Display;
-import org.eclipse.swt.widgets.ProgressBar;
 import org.eclipse.ui.IWorkbenchWindow;
 
 import codeimp.undo.CodeImpUndoManager;
+import codeimp.wizards.CodeImpProgressBar;
 
 public abstract class CodeImpAbstract {
 
@@ -84,8 +84,8 @@ public abstract class CodeImpAbstract {
 	 * Other version of runImprovement(IProgressMonitor) which reports progress
 	 * via progress bar
 	 * 
-	 * @param bar
+	 * @param progressBar
 	 */
-	public abstract void runImprovement(ProgressBar bar, Display disp);
+	public abstract void runImprovement(CodeImpProgressBar progressBar, Display disp);
 
 }

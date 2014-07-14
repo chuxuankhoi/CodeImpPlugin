@@ -19,7 +19,6 @@ import org.eclipse.jdt.core.JavaModelException;
 import org.eclipse.jdt.core.refactoring.IJavaRefactorings;
 import org.eclipse.jface.text.ITextSelection;
 import org.eclipse.swt.widgets.Display;
-import org.eclipse.swt.widgets.ProgressBar;
 import org.eclipse.ui.IWorkbenchWindow;
 
 import codeimp.graders.IGrader;
@@ -31,6 +30,7 @@ import codeimp.refactoring.CodeImpRefactoring;
 import codeimp.refactoring.CodeImpRefactoringManager;
 import codeimp.refactoring.RefactoringPair;
 import codeimp.undo.CodeImpUndoManager;
+import codeimp.wizards.CodeImpProgressBar;
 
 /**
  * @author chuxuankhoi
@@ -42,13 +42,13 @@ public class CodeImpHillClimbing extends CodeImpAbstract {
 
 	private class ImprovementThread extends Thread {
 		private Display display = null;
-		private ProgressBar bar = null;
+		private CodeImpProgressBar bar = null;
 		private volatile boolean isCancelled = false;
 		String[] actionList;
 
-		ImprovementThread(Display disp, ProgressBar progBar) {
+		ImprovementThread(Display disp, CodeImpProgressBar bar2) {
 			display = disp;
-			bar = progBar;
+			bar = bar2;
 		}
 
 		public void run() {
@@ -190,7 +190,7 @@ public class CodeImpHillClimbing extends CodeImpAbstract {
 	}
 
 	@Override
-	public void runImprovement(ProgressBar bar, Display disp) {
+	public void runImprovement(CodeImpProgressBar bar, Display disp) {
 		thread = new ImprovementThread(disp, bar);
 		thread.start();
 	}
@@ -201,7 +201,7 @@ public class CodeImpHillClimbing extends CodeImpAbstract {
 	 * @param action
 	 */
 	private void finishAction(String action, Display display,
-			final ProgressBar bar) {
+			final CodeImpProgressBar bar) {
 		double curScore = calCurrentScore();
 		double impScore = startScore - curScore;
 		results.put(action, new Double(impScore));
