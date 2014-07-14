@@ -38,21 +38,20 @@ public class LCOM5 implements IGrader {
 		}
 		k = methods.length;
 		l = fields.length;
-		try {
-			for (IMethod m : methods) {
-				IField[] usedFields = CodeImpUtils.getFieldsInMethod(m, fields,
-						file);
-				if(usedFields != null) {
-					a += usedFields.length;
-				}
+		for (IMethod m : methods) {
+			IField[] usedFields = null;
+			try {
+				usedFields = CodeImpUtils.getFieldsInMethod(m, fields, file);
+			} catch (JavaModelException e) {
+				continue;
 			}
-		} catch (JavaModelException e) {
-			e.printStackTrace();
-			return 0;
+			if (usedFields != null) {
+				a += usedFields.length;
+			}
 		}
 
 		// Calculate LCOM5
-		return (l - k * l) != 0 ? (a - k * l) / (l - k * l) :  0;
+		return (l - k * l) != 0 ? (a - k * l) / (l - k * l) : 0;
 	}
 
 	/**

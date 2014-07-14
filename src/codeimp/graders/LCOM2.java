@@ -4,11 +4,10 @@
 package codeimp.graders;
 
 import org.eclipse.core.resources.IFile;
+import org.eclipse.core.runtime.CoreException;
 import org.eclipse.jdt.core.IField;
 import org.eclipse.jdt.core.IMethod;
 import org.eclipse.jdt.core.IType;
-import org.eclipse.jdt.core.JavaModelException;
-
 import codeimp.CodeImpUtils;
 
 /**
@@ -62,7 +61,7 @@ public class LCOM2 implements IGrader {
 			} else {
 				return 0;
 			}
-		} catch (JavaModelException e) {
+		} catch (CoreException e) {
 			e.printStackTrace();
 			return 0;
 		}

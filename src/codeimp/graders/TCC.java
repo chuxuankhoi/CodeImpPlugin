@@ -24,7 +24,7 @@ public class TCC implements IGrader {
 			fields = type.getFields();
 			methods = type.getMethods();
 		} catch (JavaModelException e) {
-			e.printStackTrace();
+//			e.printStackTrace();
 			return 0;
 		}
 
@@ -48,7 +48,7 @@ public class TCC implements IGrader {
 						count++;
 					}
 				} catch (JavaModelException e) {
-					e.printStackTrace();
+//					e.printStackTrace();
 				}
 			}
 		}

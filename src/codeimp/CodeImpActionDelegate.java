@@ -4,21 +4,20 @@
 package codeimp;
 
 import org.eclipse.core.resources.IFile;
-import org.eclipse.core.runtime.IProgressMonitor;
-import org.eclipse.core.runtime.IStatus;
-import org.eclipse.core.runtime.Status;
-import org.eclipse.core.runtime.jobs.Job;
 import org.eclipse.jdt.core.IJavaElement;
 import org.eclipse.jface.action.IAction;
 import org.eclipse.jface.dialogs.MessageDialog;
 import org.eclipse.jface.text.ITextSelection;
 import org.eclipse.jface.viewers.ISelection;
 import org.eclipse.jface.viewers.ISelectionProvider;
+import org.eclipse.jface.wizard.WizardDialog;
 import org.eclipse.ui.IEditorPart;
 import org.eclipse.ui.IFileEditorInput;
 import org.eclipse.ui.IWorkbenchPartSite;
 import org.eclipse.ui.IWorkbenchWindow;
 import org.eclipse.ui.IWorkbenchWindowActionDelegate;
+
+import codeimp.wizards.CodeImpWizard;
 
 /**
  * @author chuxuankhoi
@@ -71,22 +70,11 @@ public class CodeImpActionDelegate implements IWorkbenchWindowActionDelegate {
 					"Getting selected text ...", "No text is selected.");
 			return;
 		}
-
-		// Run the improvement
-		final CodeImpAbstract improvementJob = new CodeImpHillClimbing(
-				textSelection, curEditorFile, window);
-		Job job = new Job("Code improvement") {
-			@Override
-			protected IStatus run(IProgressMonitor monitor) {
-				improvementJob.runImprovement();
-				// Display the analysis and confirm the changed blocks
-				System.out.println("Results:");
-				System.out.println(improvementJob.getPrintedResults());
-				System.out.println("Code improvement completed.");
-				return Status.OK_STATUS;
-			}
-		};
-		job.schedule();
+		
+		// Display wizard for CodeImp
+		CodeImpWizard wizard = new CodeImpWizard(textSelection, curEditorFile, window);
+		WizardDialog wDlg = new WizardDialog(window.getShell(), wizard);
+		wDlg.open();
 
 	}
 

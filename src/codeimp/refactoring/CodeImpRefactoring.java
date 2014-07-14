@@ -6,7 +6,6 @@ package codeimp.refactoring;
 import org.eclipse.core.resources.IFile;
 import org.eclipse.core.runtime.CoreException;
 import org.eclipse.core.runtime.IProgressMonitor;
-import org.eclipse.core.runtime.NullProgressMonitor;
 import org.eclipse.core.runtime.OperationCanceledException;
 import org.eclipse.core.runtime.SubProgressMonitor;
 import org.eclipse.jdt.core.IJavaElement;
@@ -35,8 +34,7 @@ public class CodeImpRefactoring {
 	 * @param action
 	 * @param project
 	 */
-	public CodeImpRefactoring(IJavaElement element, String action,
-			IFile file) {
+	public CodeImpRefactoring(IJavaElement element, String action, IFile file) {
 		this.pair = new RefactoringPair();
 		this.pair.element = element;
 		this.pair.action = action;
@@ -50,16 +48,19 @@ public class CodeImpRefactoring {
 
 	/**
 	 * 
+	 * @param monitor
 	 * @param element
 	 * @param action
 	 * @throws CoreException
 	 */
-	public void process(IUndoManager undoMan) throws Exception {
+	public void process(IUndoManager undoMan, IProgressMonitor monitor)
+			throws Exception {
 		// Run the generated actions
-			refactorElement(pair, undoMan);
+		refactorElement(pair, undoMan, monitor);
 	}
 
-	private void refactorElement(RefactoringPair pair, IUndoManager undoMan)
+	private void refactorElement(RefactoringPair pair, IUndoManager undoMan,
+			IProgressMonitor monitor)
 			throws CoreException {
 		if (pair == null) {
 			throw new OperationCanceledException();
@@ -68,6 +69,7 @@ public class CodeImpRefactoring {
 			throw new OperationCanceledException();
 		}
 
+		monitor.beginTask("Refactoring", 6);
 		CodeImpRefactoringManager refactoringManager = CodeImpRefactoringManager
 				.getManager();
 
@@ -78,21 +80,25 @@ public class CodeImpRefactoring {
 					+ pair.element.toString());
 			throw new OperationCanceledException();
 		}
-		IProgressMonitor monitor = new NullProgressMonitor();
+		monitor.worked(1);
 		RefactoringStatus status = new RefactoringStatus();
 		status = refactoring.checkInitialConditions(monitor);
 		if (status.hasFatalError()) {
 			printLog(status.getMessageMatchingSeverity(RefactoringStatus.FATAL));
 			throw new OperationCanceledException();
 		}
+		monitor.worked(2);
 		status = refactoring.checkFinalConditions(monitor);
 		if (status.hasFatalError()) {
 			printLog(status.getMessageMatchingSeverity(RefactoringStatus.FATAL));
 			throw new OperationCanceledException();
 		}
+		monitor.worked(3);
 		Change change = refactoring.createChange(monitor);
+		monitor.worked(4);
 		undoMan.aboutToPerformChange(change);
-		Change fUndoChange = change.perform(new SubProgressMonitor(monitor, 9));
+		Change fUndoChange = change.perform(new SubProgressMonitor(monitor, 1));
+		monitor.worked(5);
 		change.dispose();
 		if (fUndoChange != null) {
 			undoMan.changePerformed(change, true);
@@ -100,6 +106,7 @@ public class CodeImpRefactoring {
 					monitor, 1));
 			undoMan.addUndo(refactoring.getName(), fUndoChange);
 		}
+		monitor.worked(6);
 	}
 
 }
