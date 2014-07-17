@@ -115,7 +115,7 @@ public class CodeImpRefactoringManager {
 				}
 			}
 		}
-		// actionsList.add(IJavaRefactorings.MOVE_STATIC_MEMBERS);
+//		actionsList.add(IJavaRefactorings.MOVE_METHOD);
 
 	}
 
@@ -615,14 +615,6 @@ public class CodeImpRefactoringManager {
 		return pairs;
 	}
 
-	// private RefactoringPair[] getDeletePairs(IJavaElement rootElement) {
-	// RefactoringPair p = new RefactoringPair();
-	// p.action = IJavaRefactorings.DELETE;
-	// p.element = rootElement;
-	// RefactoringPair[] pairs = new RefactoringPair[] { p };
-	// return pairs;
-	// }
-
 	/**
 	 * @param rootElement
 	 * @param sourceFile
@@ -693,6 +685,7 @@ public class CodeImpRefactoringManager {
 	public Refactoring getRefactoring(RefactoringPair pair, IFile sourceFile)
 			throws CoreException {
 		if (pair.element == null || pair.action == null) {
+			System.out.println("No element or no action.");
 			return null;
 		}
 		RefactoringContribution contribution = RefactoringCore
@@ -825,6 +818,7 @@ public class CodeImpRefactoringManager {
 		// Calculate candidate for the target
 		IVariableBinding[] candidateTargets = calculateTarget((IMethod) pair.element);
 		if (candidateTargets.length == 0) {
+			CodeImpUtils.printLog("No candidate target for " +  pair.action);
 			return null;
 		}
 		processor.setTarget(candidateTargets[0]);
@@ -1045,7 +1039,8 @@ public class CodeImpRefactoringManager {
 			break;
 		case IJavaRefactorings.MOVE_STATIC_MEMBERS:
 			IMember[] moveStaticMembers = new IMember[] { (IMember) pair.element };
-			if (!RefactoringAvailabilityTester.isMoveStaticAvailable(moveStaticMembers))
+			if (!RefactoringAvailabilityTester
+					.isMoveStaticAvailable(moveStaticMembers))
 				return null;
 			final Set<IMember> set = new HashSet<IMember>();
 			set.addAll(Arrays.asList(moveStaticMembers));

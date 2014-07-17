@@ -60,8 +60,7 @@ public class CodeImpRefactoring {
 	}
 
 	private void refactorElement(RefactoringPair pair, IUndoManager undoMan,
-			IProgressMonitor monitor)
-			throws CoreException {
+			IProgressMonitor monitor){
 		if (pair == null) {
 			throw new OperationCanceledException();
 		}
@@ -73,31 +72,56 @@ public class CodeImpRefactoring {
 		CodeImpRefactoringManager refactoringManager = CodeImpRefactoringManager
 				.getManager();
 
-		Refactoring refactoring = refactoringManager.getRefactoring(pair,
-				sourceFile);
+		Refactoring refactoring = null;
+		try {
+			refactoring = refactoringManager.getRefactoring(pair,
+					sourceFile);
+		} catch (CoreException e) {
+			e.printStackTrace();
+		}
 		if (refactoring == null) {
 			printLog("No refactoring is created for: "
 					+ pair.element.toString());
-			throw new OperationCanceledException();
+			return;
 		}
 		monitor.worked(1);
 		RefactoringStatus status = new RefactoringStatus();
-		status = refactoring.checkInitialConditions(monitor);
+		try {
+			status = refactoring.checkInitialConditions(monitor);
+		} catch (OperationCanceledException | CoreException e) {
+			e.printStackTrace();
+		}
 		if (status.hasFatalError()) {
 			printLog(status.getMessageMatchingSeverity(RefactoringStatus.FATAL));
 			throw new OperationCanceledException();
 		}
 		monitor.worked(2);
-		status = refactoring.checkFinalConditions(monitor);
+		try {
+			status = refactoring.checkFinalConditions(monitor);
+		} catch (OperationCanceledException | CoreException e) {
+			e.printStackTrace();
+		}
 		if (status.hasFatalError()) {
 			printLog(status.getMessageMatchingSeverity(RefactoringStatus.FATAL));
 			throw new OperationCanceledException();
 		}
 		monitor.worked(3);
-		Change change = refactoring.createChange(monitor);
+		Change change;
+		try {
+			change = refactoring.createChange(monitor);
+		} catch (OperationCanceledException | CoreException e) {
+			e.printStackTrace();
+			return;
+		}
 		monitor.worked(4);
 		undoMan.aboutToPerformChange(change);
-		Change fUndoChange = change.perform(new SubProgressMonitor(monitor, 1));
+		Change fUndoChange;
+		try {
+			fUndoChange = change.perform(new SubProgressMonitor(monitor, 1));
+		} catch (CoreException e) {
+			e.printStackTrace();
+			return;
+		}
 		monitor.worked(5);
 		change.dispose();
 		if (fUndoChange != null) {

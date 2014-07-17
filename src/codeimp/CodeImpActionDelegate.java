@@ -28,6 +28,7 @@ public class CodeImpActionDelegate implements IWorkbenchWindowActionDelegate {
 	IFile curEditorFile = null;
 	ITextSelection textSelection = null;
 	IJavaElement[] extractedResults = null;
+	WizardDialog wDlg = null;
 
 	/*
 	 * (non-Javadoc)
@@ -70,10 +71,11 @@ public class CodeImpActionDelegate implements IWorkbenchWindowActionDelegate {
 					"Getting selected text ...", "No text is selected.");
 			return;
 		}
-		
+
 		// Display wizard for CodeImp
-		CodeImpWizard wizard = new CodeImpWizard(textSelection, curEditorFile, window);
-		WizardDialog wDlg = new WizardDialog(window.getShell(), wizard);
+		CodeImpWizard wizard = new CodeImpWizard(textSelection, curEditorFile,
+				window);
+		wDlg = new WizardDialog(window.getShell(), wizard);
 		wDlg.open();
 
 	}
@@ -149,6 +151,7 @@ public class CodeImpActionDelegate implements IWorkbenchWindowActionDelegate {
 	 */
 	@Override
 	public void dispose() {
+		wDlg.close();
 	}
 
 	/*

@@ -258,10 +258,12 @@ public class CodeImpUndoManager implements IUndoManager {
 		IUndoableOperation undo = fOperationHistory
 				.getUndoOperation(RefactoringCorePlugin.getUndoContext());
 		UndoableOperation2ChangeAdapter changeOperation = getUnwrappedOperation(undo);
-		if (changeOperation == null)
-			throw new CoreException(new Status(IStatus.ERROR,
-					RefactoringCorePlugin.getPluginId(), IStatus.ERROR,
-					RefactoringCoreMessages.UndoManager2_no_change, null));
+		if (changeOperation == null) {
+//			throw new CoreException(new Status(IStatus.ERROR,
+//					RefactoringCorePlugin.getPluginId(), IStatus.ERROR,
+//					RefactoringCoreMessages.UndoManager2_no_change, null));
+			return;
+		}
 		if (query == null)
 			query = new NullQuery();
 		try {
