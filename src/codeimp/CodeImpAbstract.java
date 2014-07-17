@@ -1,5 +1,7 @@
 package codeimp;
 
+import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.Map;
 
 import org.eclipse.core.resources.IFile;
@@ -7,13 +9,100 @@ import org.eclipse.jdt.core.IJavaElement;
 import org.eclipse.jdt.core.JavaModelException;
 import org.eclipse.jface.text.ITextSelection;
 import org.eclipse.ltk.core.refactoring.IUndoManager;
-import org.eclipse.swt.widgets.Display;
 import org.eclipse.ui.IWorkbenchWindow;
 
+import codeimp.refactoring.RefactoringPair;
 import codeimp.undo.CodeImpUndoManager;
 import codeimp.wizards.CodeImpProgressBar;
 
 public abstract class CodeImpAbstract {
+
+	protected abstract class CancellableThread extends Thread {
+		protected CodeImpProgressBar bar = null;
+		protected volatile boolean isCancelled = false;
+
+		CancellableThread(CodeImpProgressBar progressBar) {
+			bar = progressBar;
+		}
+
+		public abstract void run();
+
+		public void cancel() {
+			isCancelled = true;
+		}
+	}
+
+	/**
+	 * Store the effective items for the given refactoring actions
+	 * 
+	 * @author chuxuankhoi
+	 * 
+	 */
+	protected class EffectiveRefactorings {
+		protected String action;
+		protected ArrayList<RefactoringPair> effectivePairs;
+		protected ArrayList<Double> improvementScore;
+
+		/**
+		 * @return the action
+		 */
+		public String getAction() {
+			return action;
+		}
+
+		/**
+		 * @param action
+		 *            the action to set
+		 */
+		public void setAction(String action) {
+			this.action = action;
+		}
+
+		/**
+		 * @param action
+		 */
+		public EffectiveRefactorings(String action) {
+			super();
+			this.action = action;
+			effectivePairs = new ArrayList<RefactoringPair>();
+			improvementScore = new ArrayList<Double>();
+		}
+
+		public void put(RefactoringPair pair, double score) {
+			effectivePairs.add(pair);
+			improvementScore.add(score);
+		}
+
+		public HashMap<String, Double> getRefactoringMap() {
+			HashMap<String, Double> map = new HashMap<String, Double>();
+
+			for (int i = 0; i < effectivePairs.size(); i++) {
+				Object element = effectivePairs.get(i).element;
+				if (element instanceof IJavaElement) {
+					map.put(((IJavaElement) element).getElementName(),
+							improvementScore.get(i));
+				} else {
+					map.put(element.toString(), improvementScore.get(i));
+				}
+			}
+
+			return map;
+		}
+		
+		public int size() {
+			return effectivePairs.size();
+		}
+		
+		public RefactoringPair[] getRefactoringPairs() {
+			if(effectivePairs.size() == 0) {
+				return null;
+			}
+			RefactoringPair[] pairs = new RefactoringPair[effectivePairs.size()];
+			pairs = effectivePairs.toArray(pairs);
+			return pairs;
+		}
+
+	}
 
 	protected IWorkbenchWindow window;
 	protected ITextSelection codeSelection;
@@ -47,9 +136,6 @@ public abstract class CodeImpAbstract {
 		double score = 0;
 		for (IJavaElement element : elements) {
 			double elementScore = scoreElement(element);
-			printLog("calCurrentScore - Element: " + element.getElementName()
-					+ " - Type: " + element.getElementType() + " - Score: "
-					+ elementScore);
 			score += elementScore;
 		}
 		return score;
@@ -63,7 +149,7 @@ public abstract class CodeImpAbstract {
 		}
 		return "";
 	}
-	
+
 	public abstract void cancel();
 
 	/**
@@ -86,6 +172,10 @@ public abstract class CodeImpAbstract {
 	 * 
 	 * @param progressBar
 	 */
-	public abstract void runImprovement(CodeImpProgressBar progressBar, Display disp);
+	public abstract void runImprovement(CodeImpProgressBar progressBar);
+
+	public abstract HashMap<String, Double> getEffectiveList(String action);
+	
+	public abstract RefactoringPair[] getEffectivePairs(String action);
 
 }

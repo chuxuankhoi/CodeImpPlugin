@@ -6,8 +6,11 @@ package codeimp.refactoring;
 import java.lang.reflect.Field;
 import java.lang.reflect.Modifier;
 import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Set;
 
 import org.eclipse.core.resources.IFile;
 import org.eclipse.core.resources.IResource;
@@ -16,6 +19,7 @@ import org.eclipse.core.runtime.NullProgressMonitor;
 import org.eclipse.jdt.core.ICompilationUnit;
 import org.eclipse.jdt.core.IField;
 import org.eclipse.jdt.core.IJavaElement;
+import org.eclipse.jdt.core.IJavaProject;
 import org.eclipse.jdt.core.ILocalVariable;
 import org.eclipse.jdt.core.IMember;
 import org.eclipse.jdt.core.IMethod;
@@ -36,15 +40,30 @@ import org.eclipse.jdt.core.refactoring.descriptors.ExtractClassDescriptor;
 import org.eclipse.jdt.core.refactoring.descriptors.JavaRefactoringDescriptor;
 import org.eclipse.jdt.core.refactoring.descriptors.MoveDescriptor;
 import org.eclipse.jdt.core.refactoring.descriptors.RenameJavaElementDescriptor;
+import org.eclipse.jdt.internal.core.refactoring.descriptors.RefactoringSignatureDescriptorFactory;
+import org.eclipse.jdt.internal.corext.refactoring.RefactoringAvailabilityTester;
 import org.eclipse.jdt.internal.corext.refactoring.code.ExtractMethodRefactoring;
+import org.eclipse.jdt.internal.corext.refactoring.reorg.JavaMoveProcessor;
+import org.eclipse.jdt.internal.corext.refactoring.reorg.ReorgPolicyFactory;
+import org.eclipse.jdt.internal.corext.refactoring.reorg.IReorgPolicy.IMovePolicy;
 import org.eclipse.jdt.internal.corext.refactoring.structure.ASTNodeSearchUtil;
 import org.eclipse.jdt.internal.corext.refactoring.structure.CompilationUnitRewrite;
+import org.eclipse.jdt.internal.corext.refactoring.structure.ExtractClassRefactoring;
 import org.eclipse.jdt.internal.corext.refactoring.structure.MoveInstanceMethodProcessor;
 import org.eclipse.jdt.internal.corext.refactoring.structure.MoveStaticMembersProcessor;
 import org.eclipse.jdt.internal.corext.refactoring.structure.PullUpRefactoringProcessor;
 import org.eclipse.jdt.internal.corext.refactoring.structure.PushDownRefactoringProcessor;
 import org.eclipse.jdt.internal.corext.refactoring.structure.MoveInstanceMethodProcessor.ReadyOnlyFieldFinder;
 import org.eclipse.jdt.internal.ui.preferences.JavaPreferencesSettings;
+import org.eclipse.jdt.internal.ui.refactoring.ExtractClassWizard;
+import org.eclipse.jdt.internal.ui.refactoring.MoveInstanceMethodWizard;
+import org.eclipse.jdt.internal.ui.refactoring.MoveMembersWizard;
+import org.eclipse.jdt.internal.ui.refactoring.PullUpWizard;
+import org.eclipse.jdt.internal.ui.refactoring.PushDownWizard;
+import org.eclipse.jdt.internal.ui.refactoring.code.ExtractMethodWizard;
+import org.eclipse.jdt.internal.ui.refactoring.reorg.CreateTargetQueries;
+import org.eclipse.jdt.internal.ui.refactoring.reorg.ReorgMoveWizard;
+import org.eclipse.jdt.internal.ui.refactoring.reorg.ReorgQueries;
 import org.eclipse.jface.text.IDocument;
 import org.eclipse.jface.text.ITextSelection;
 import org.eclipse.jface.text.TextSelection;
@@ -52,8 +71,11 @@ import org.eclipse.ltk.core.refactoring.Refactoring;
 import org.eclipse.ltk.core.refactoring.RefactoringContribution;
 import org.eclipse.ltk.core.refactoring.RefactoringCore;
 import org.eclipse.ltk.core.refactoring.RefactoringStatus;
+import org.eclipse.ltk.core.refactoring.participants.MoveProcessor;
 import org.eclipse.ltk.core.refactoring.participants.MoveRefactoring;
 import org.eclipse.ltk.core.refactoring.participants.ProcessorBasedRefactoring;
+import org.eclipse.ltk.core.refactoring.participants.RefactoringProcessor;
+import org.eclipse.ltk.ui.refactoring.RefactoringWizard;
 import org.eclipse.ui.editors.text.TextFileDocumentProvider;
 
 import codeimp.CodeImpUtils;
@@ -542,7 +564,7 @@ public class CodeImpRefactoringManager {
 		}
 		return tmpClass;
 	}
-	
+
 	public void deleteTmpClass() {
 		if (tmpClass == null) {
 			return;
@@ -899,6 +921,7 @@ public class CodeImpRefactoringManager {
 		return refactoring;
 	}
 
+	// TODO hinh nhung extract toan bo bien
 	private Refactoring createExtractClassRefactoring(RefactoringPair pair,
 			JavaRefactoringDescriptor descriptor, RefactoringStatus status)
 			throws CoreException {
@@ -934,6 +957,133 @@ public class CodeImpRefactoringManager {
 		renameDescriptor.setUpdateReferences(true);
 		renameDescriptor.setUpdateTextualOccurrences(true);
 		return renameDescriptor.createRefactoring(status);
+	}
+
+	public RefactoringWizard getWizard(RefactoringPair pair, IFile file)
+			throws CoreException {
+		RefactoringWizard wizard = null;
+		Refactoring refactoring = null;
+		RefactoringProcessor processor = null;
+		IJavaElement[] elements = null;
+		IJavaProject project = null;
+
+		switch (pair.action) {
+		case IJavaRefactorings.RENAME_FIELD:
+		case IJavaRefactorings.RENAME_LOCAL_VARIABLE:
+		case IJavaRefactorings.RENAME_COMPILATION_UNIT:
+		case IJavaRefactorings.RENAME_ENUM_CONSTANT:
+		case IJavaRefactorings.RENAME_JAVA_PROJECT:
+		case IJavaRefactorings.RENAME_METHOD:
+		case IJavaRefactorings.RENAME_PACKAGE:
+		case IJavaRefactorings.RENAME_SOURCE_FOLDER:
+		case IJavaRefactorings.RENAME_TYPE:
+		case IJavaRefactorings.RENAME_TYPE_PARAMETER:
+			break;
+		case IJavaRefactorings.CHANGE_METHOD_SIGNATURE:
+			break;
+		case IJavaRefactorings.CONVERT_ANONYMOUS:
+		case IJavaRefactorings.CONVERT_LOCAL_VARIABLE:
+		case IJavaRefactorings.CONVERT_MEMBER_TYPE:
+		case IJavaRefactorings.COPY:
+		case IJavaRefactorings.DELETE:
+		case IJavaRefactorings.ENCAPSULATE_FIELD:
+			break;
+		case IJavaRefactorings.EXTRACT_CLASS:
+			ExtractClassDescriptor descriptor = RefactoringSignatureDescriptorFactory
+					.createExtractClassDescriptor();
+			descriptor.setType((IType) ((IJavaElement) pair.element)
+					.getParent());
+			descriptor.setProject(file.getProject().getName());
+			refactoring = new ExtractClassRefactoring(descriptor);
+			wizard = new ExtractClassWizard(descriptor, refactoring);
+			break;
+		case IJavaRefactorings.EXTRACT_CONSTANT:
+		case IJavaRefactorings.EXTRACT_INTERFACE:
+		case IJavaRefactorings.EXTRACT_LOCAL_VARIABLE:
+		case IJavaRefactorings.EXTRACT_METHOD:
+			refactoring = getRefactoring(pair, file);
+			wizard = new ExtractMethodWizard(
+					(ExtractMethodRefactoring) refactoring);
+			break;
+		case IJavaRefactorings.EXTRACT_SUPERCLASS:
+			break;
+		case IJavaRefactorings.GENERALIZE_TYPE:
+		case IJavaRefactorings.INFER_TYPE_ARGUMENTS:
+		case IJavaRefactorings.INLINE_CONSTANT:
+		case IJavaRefactorings.INLINE_LOCAL_VARIABLE:
+		case IJavaRefactorings.INLINE_METHOD:
+		case IJavaRefactorings.INTRODUCE_FACTORY:
+		case IJavaRefactorings.INTRODUCE_INDIRECTION:
+		case IJavaRefactorings.INTRODUCE_PARAMETER:
+		case IJavaRefactorings.INTRODUCE_PARAMETER_OBJECT:
+			break;
+		case IJavaRefactorings.MOVE:
+			IResource[] resources = new IResource[] { file };
+			elements = new IJavaElement[] { (IJavaElement) pair.element };
+			IMovePolicy policy = ReorgPolicyFactory.createMovePolicy(resources,
+					elements);
+			if (policy.canEnable()) {
+				processor = new JavaMoveProcessor(policy);
+				refactoring = new MoveRefactoring((MoveProcessor) processor);
+				wizard = new ReorgMoveWizard((JavaMoveProcessor) processor,
+						refactoring);
+				((JavaMoveProcessor) processor)
+						.setCreateTargetQueries(new CreateTargetQueries(wizard));
+				((JavaMoveProcessor) processor)
+						.setReorgQueries(new ReorgQueries(wizard));
+			}
+			break;
+		case IJavaRefactorings.MOVE_METHOD:
+			processor = new MoveInstanceMethodProcessor(
+					(IMethod) pair.element,
+					JavaPreferencesSettings
+							.getCodeGenerationSettings(((IJavaElement) pair.element)
+									.getJavaProject()));
+			refactoring = new MoveRefactoring((MoveProcessor) processor);
+			wizard = new MoveInstanceMethodWizard(
+					(MoveInstanceMethodProcessor) processor, refactoring);
+			break;
+		case IJavaRefactorings.MOVE_STATIC_MEMBERS:
+			IMember[] moveStaticMembers = new IMember[] { (IMember) pair.element };
+			if (!RefactoringAvailabilityTester.isMoveStaticAvailable(moveStaticMembers))
+				return null;
+			final Set<IMember> set = new HashSet<IMember>();
+			set.addAll(Arrays.asList(moveStaticMembers));
+			elements = set.toArray(new IMember[set.size()]);
+			if (elements.length > 0)
+				project = elements[0].getJavaProject();
+			processor = new MoveStaticMembersProcessor((IMember[]) elements,
+					JavaPreferencesSettings.getCodeGenerationSettings(project));
+			refactoring = new MoveRefactoring((MoveProcessor) processor);
+			wizard = new MoveMembersWizard(
+					(MoveStaticMembersProcessor) processor, refactoring);
+			break;
+		case IJavaRefactorings.PULL_UP:
+			IMember[] pullUpMembers = new IMember[] { (IMember) pair.element };
+			if (!RefactoringAvailabilityTester.isPullUpAvailable(pullUpMembers))
+				return null;
+			if (pullUpMembers != null && pullUpMembers.length > 0)
+				project = pullUpMembers[0].getJavaProject();
+			processor = new PullUpRefactoringProcessor(pullUpMembers,
+					JavaPreferencesSettings.getCodeGenerationSettings(project));
+			refactoring = new ProcessorBasedRefactoring(processor);
+			wizard = new PullUpWizard((PullUpRefactoringProcessor) processor,
+					refactoring);
+			break;
+		case IJavaRefactorings.PUSH_DOWN:
+			IMember[] pushDownMembers = new IMember[] { (IMember) pair.element };
+			if (!RefactoringAvailabilityTester
+					.isPushDownAvailable(pushDownMembers))
+				return null;
+			processor = new PushDownRefactoringProcessor(pushDownMembers);
+			refactoring = new ProcessorBasedRefactoring(processor);
+			wizard = new PushDownWizard(
+					(PushDownRefactoringProcessor) processor, refactoring);
+			break;
+		default:
+			break;
+		}
+		return wizard;
 	}
 
 }

@@ -9,5 +9,6 @@
 	<classpathentry kind="lib" path="lib/org.eclipse.ltk.core.refactoring_3.6.100.v20130605-1748.jar"/>
 	<classpathentry kind="lib" path="lib/org.eclipse.jdt.ui_3.7.1.r371_v20110824-0800.jar"/>
 	<classpathentry kind="lib" path="lib/org.eclipse.ui.editors_3.8.0.v20120523-1540.jar"/>
+	<classpathentry kind="lib" path="lib/org.eclipse.ltk.ui.refactoring_3.7.100.v20130605-1748.jar"/>
 	<classpathentry kind="output" path="bin"/>
 </classpath>

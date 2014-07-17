@@ -1,7 +1,7 @@
 package codeimp.wizards;
 
-import org.eclipse.core.resources.IFile;
-import org.eclipse.jface.text.ITextSelection;
+import java.util.Map;
+
 import org.eclipse.jface.wizard.WizardPage;
 import org.eclipse.swt.SWT;
 import org.eclipse.swt.layout.FillLayout;
@@ -9,10 +9,7 @@ import org.eclipse.swt.layout.GridData;
 import org.eclipse.swt.layout.GridLayout;
 import org.eclipse.swt.widgets.Composite;
 import org.eclipse.swt.widgets.Display;
-import org.eclipse.ui.IWorkbenchWindow;
-
 import codeimp.CodeImpAbstract;
-import codeimp.CodeImpHillClimbing;
 
 public class AnalysisPage extends WizardPage {
 
@@ -22,22 +19,15 @@ public class AnalysisPage extends WizardPage {
 	private CodeImpProgressBar progressBar = null;
 	protected int processBarStyle = SWT.SMOOTH; // process bar style
 
-	private ITextSelection textSelection;
-	private IFile curEditorFile;
-	private IWorkbenchWindow window;
-
 	protected CodeImpAbstract improvementJob = null;
 
 	private Display display;
 
-	protected AnalysisPage(String pageName, ITextSelection selection,
-			IFile file, IWorkbenchWindow win) {
+	protected AnalysisPage(String pageName, CodeImpAbstract improvement) {
 		super(pageName);
 		setTitle(pageName);
 		setDescription("Analyse current source code to get the effectiveness of refactoring actions");
-		textSelection = selection;
-		curEditorFile = file;
-		window = win;
+		improvementJob = improvement;
 	}
 
 	@Override
@@ -56,14 +46,12 @@ public class AnalysisPage extends WizardPage {
 
 		// progressBar = new ProgressBar(progressBarComposite, processBarStyle);
 		progressBar = new CodeImpProgressBar(progressBarComposite,
-				processBarStyle);
+				processBarStyle, display);
 		progressBar.setParentPage(this);
 
 		setControl(container);
 
-		improvementJob = new CodeImpHillClimbing(textSelection, curEditorFile,
-				window);
-		improvementJob.runImprovement(progressBar, display);
+		improvementJob.runImprovement(progressBar);
 
 		setPageComplete(false);
 	}
@@ -81,6 +69,19 @@ public class AnalysisPage extends WizardPage {
 		} else {
 			return super.canFlipToNextPage();
 		}
+	}
+
+	public Map<String, Double> getResults() {
+		if (improvementJob == null) {
+			return null;
+		}
+		return improvementJob.getResults();
+	}
+
+	public void notifyCompleted() {
+		setPageComplete(true);
+		getWizard().getPages();
+		getContainer().showPage(getNextPage());
 	}
 
 }

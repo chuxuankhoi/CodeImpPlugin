@@ -2,30 +2,50 @@ package codeimp.wizards;
 
 import org.eclipse.jface.wizard.WizardPage;
 import org.eclipse.swt.widgets.Composite;
+import org.eclipse.swt.widgets.Display;
 import org.eclipse.swt.widgets.ProgressBar;
 
 public class CodeImpProgressBar {
 	
 	private ProgressBar bar = null;
-	WizardPage usedWizardPage = null;
+	private WizardPage parent = null;
+	private Display display;
 
-	public CodeImpProgressBar(Composite parent, int style) {
+	public CodeImpProgressBar(Composite parent, int style, Display disp) {
 		bar = new ProgressBar(parent, style);
+		display = disp;
 	}
 	
-	public void setMaximum(int value) {
-		bar.setMaximum(value);
+	public void setMaximum(final int value) {
+		display.syncExec(new Runnable() {
+			@Override
+			public void run() {
+				bar.setMaximum(value);
+			}
+		});
 	}
 	
 	public int getMaximum() {
 		return bar.getMaximum();
 	}
 
-	public void setSelection(int value) {
-		bar.setSelection(value);
-		if(value == bar.getMaximum() && usedWizardPage != null) {
-			usedWizardPage.setPageComplete(true);
+	public void setSelection(final int value) {
+		if (!display.isDisposed()) {
+			display.syncExec(new Runnable() {
+				@Override
+				public void run() {
+					if (!bar.isDisposed()) {
+						bar.setSelection(value);
+						if(value == bar.getMaximum() && parent != null) {
+							if(parent instanceof AnalysisPage) {
+								((AnalysisPage) parent).notifyCompleted();
+							}
+						}
+					}
+				}
+			});
 		}
+		
 	}
 	
 	public int getSelection() {
@@ -33,7 +53,7 @@ public class CodeImpProgressBar {
 	}
 	
 	public void setParentPage(WizardPage page) {
-		usedWizardPage = page;
+		parent = page;
 	}
 	
 	public boolean isDisposed() {
