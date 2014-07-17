@@ -72,7 +72,7 @@ public class RefactoringSelectionPage extends WizardPage {
 				if (results == null || results.size() == 0) {
 					MessageDialog.openInformation(getShell(), "Message",
 							"There is no improvement for the selected item.");
-					getShell().close();
+//					getShell().close();
 					return;
 				}
 				// Get top MAXIMUM_ACTIONS actions to push to the table
@@ -92,7 +92,7 @@ public class RefactoringSelectionPage extends WizardPage {
 				if (topActions.size() == 0) {
 					MessageDialog.openInformation(getShell(), "Message",
 							"There is no improvement for the selected item.");
-					getShell().close();
+//					getShell().close();
 					return;
 				}
 				checkboxTableViewer.setInput(topActions);

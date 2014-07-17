@@ -151,7 +151,6 @@ public class CodeImpActionDelegate implements IWorkbenchWindowActionDelegate {
 	 */
 	@Override
 	public void dispose() {
-		wDlg.close();
 	}
 
 	/*

@@ -115,7 +115,7 @@ public class CodeImpRefactoringManager {
 				}
 			}
 		}
-//		actionsList.add(IJavaRefactorings.MOVE_METHOD);
+		// actionsList.add(IJavaRefactorings.EXTRACT_CLASS);
 
 	}
 
@@ -818,7 +818,7 @@ public class CodeImpRefactoringManager {
 		// Calculate candidate for the target
 		IVariableBinding[] candidateTargets = calculateTarget((IMethod) pair.element);
 		if (candidateTargets.length == 0) {
-			CodeImpUtils.printLog("No candidate target for " +  pair.action);
+			CodeImpUtils.printLog("No candidate target for " + pair.action);
 			return null;
 		}
 		processor.setTarget(candidateTargets[0]);
@@ -915,7 +915,6 @@ public class CodeImpRefactoringManager {
 		return refactoring;
 	}
 
-	// TODO hinh nhung extract toan bo bien
 	private Refactoring createExtractClassRefactoring(RefactoringPair pair,
 			JavaRefactoringDescriptor descriptor, RefactoringStatus status)
 			throws CoreException {
@@ -923,11 +922,24 @@ public class CodeImpRefactoringManager {
 		extractClassDescriptor.setClassName(((IJavaElement) pair.element)
 				.getElementName() + "Class");
 		extractClassDescriptor.setCreateTopLevel(true);
-		extractClassDescriptor.setType((IType) ((IJavaElement) pair.element)
-				.getParent());
-		Refactoring refactoring = extractClassDescriptor
-				.createRefactoring(status);
-		return refactoring;
+		IType rootType = (IType) ((IJavaElement) pair.element).getParent();
+		extractClassDescriptor.setType(rootType);
+		if (pair.element instanceof IField) {
+			ExtractClassDescriptor.Field[] fields = ExtractClassDescriptor
+					.getFields(rootType);
+			for (int i = 0; i < fields.length; i++) {
+				if (fields[i].getFieldName().equals(
+						((IField) pair.element).getElementName())) {
+					fields[i].setCreateField(true);
+				} else {
+					fields[i].setCreateField(false);
+				}
+			}
+			extractClassDescriptor.setFields(fields);
+		} else {
+			return null;
+		}
+		return new ExtractClassRefactoring(extractClassDescriptor);
 	}
 
 	/**
@@ -985,9 +997,22 @@ public class CodeImpRefactoringManager {
 		case IJavaRefactorings.EXTRACT_CLASS:
 			ExtractClassDescriptor descriptor = RefactoringSignatureDescriptorFactory
 					.createExtractClassDescriptor();
-			descriptor.setType((IType) ((IJavaElement) pair.element)
-					.getParent());
+			IType rootType = (IType) ((IJavaElement) pair.element).getParent();
+			descriptor.setType(rootType);
 			descriptor.setProject(file.getProject().getName());
+			if (pair.element instanceof IField) {
+				ExtractClassDescriptor.Field[] fields = ExtractClassDescriptor
+						.getFields(rootType);
+				for (int i = 0; i < fields.length; i++) {
+					if (fields[i].getFieldName().equals(
+							((IField) pair.element).getElementName())) {
+						fields[i].setCreateField(true);
+					} else {
+						fields[i].setCreateField(false);
+					}
+				}
+				descriptor.setFields(fields);
+			}
 			refactoring = new ExtractClassRefactoring(descriptor);
 			wizard = new ExtractClassWizard(descriptor, refactoring);
 			break;

@@ -127,7 +127,6 @@ public class CodeImpHillClimbing extends CodeImpAbstract {
 								finishAction(actionList[i], bar);
 								return;
 							}
-							printLog("Old score: " + oldScore);
 							if (pairs[k].element instanceof IJavaElement) {
 								printLog("Trying "
 										+ actionList[i]
@@ -148,36 +147,46 @@ public class CodeImpHillClimbing extends CodeImpAbstract {
 							CodeImpRefactoring refactoring = new CodeImpRefactoring(
 									pairs[k], sourceFile);
 							totalRefactoring++;
+							boolean success = false;
 							try {
-								refactoring.process(undoMan,
+								success = refactoring.process(undoMan,
 										new NullProgressMonitor());
-								// Thread.sleep(500);
+							} catch (Exception e) {
+								// Do nothing
+							}
+							try {
 								wait(500);
-								successfullRefactoring++;
+							} catch (InterruptedException e) {
+							}
+							successfullRefactoring++;
+							try {
 								sourceFile.refreshLocal(IFile.DEPTH_INFINITE,
 										null);
-								double curScore = calCurrentScore();
-								if (curScore < oldScore) {
-									savedRefactoring.put(pairs[k],
-											(oldScore - curScore));
-
-									oldScore = curScore;
-									continue;
-								} else {
-									IProgressMonitor undoMonitor = new NullProgressMonitor();
-									undoMan.performUndo(null, undoMonitor);
-									if (curScore > oldScore) {
-										finishAction(actionList[i], bar);
-										break;
-									}
-									Thread.sleep(500);
-								}
-							} catch (Exception e) {
-								printLog("Cannot execute the refactoring");
-								e.printStackTrace();
-								continue;
+							} catch (CoreException e) {
 							}
-
+							double curScore = calCurrentScore();
+							if (curScore < oldScore) {
+								savedRefactoring.put(pairs[k],
+										(oldScore - curScore));
+								oldScore = curScore;
+								continue;
+							} else {
+								if (success) {
+									IProgressMonitor undoMonitor = new NullProgressMonitor();
+									try {
+										undoMan.performUndo(null, undoMonitor);
+									} catch (CoreException e) {
+									}
+								}
+								if (curScore > oldScore) {
+									finishAction(actionList[i], bar);
+									break;
+								}
+								try {
+									wait(500);
+								} catch (InterruptedException e) {
+								}
+							}
 						}
 					}
 					finishAction(actionList[i], bar);

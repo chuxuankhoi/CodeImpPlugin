@@ -51,15 +51,16 @@ public class CodeImpRefactoring {
 	 * @param monitor
 	 * @param element
 	 * @param action
+	 * @return 
 	 * @throws CoreException
 	 */
-	public void process(IUndoManager undoMan, IProgressMonitor monitor)
+	public boolean process(IUndoManager undoMan, IProgressMonitor monitor)
 			throws Exception {
 		// Run the generated actions
-		refactorElement(pair, undoMan, monitor);
+		return refactorElement(pair, undoMan, monitor);
 	}
 
-	private void refactorElement(RefactoringPair pair, IUndoManager undoMan,
+	private boolean refactorElement(RefactoringPair pair, IUndoManager undoMan,
 			IProgressMonitor monitor){
 		if (pair == null) {
 			throw new OperationCanceledException();
@@ -82,7 +83,7 @@ public class CodeImpRefactoring {
 		if (refactoring == null) {
 			printLog("No refactoring is created for: "
 					+ pair.element.toString());
-			return;
+			return false;
 		}
 		monitor.worked(1);
 		RefactoringStatus status = new RefactoringStatus();
@@ -111,7 +112,7 @@ public class CodeImpRefactoring {
 			change = refactoring.createChange(monitor);
 		} catch (OperationCanceledException | CoreException e) {
 			e.printStackTrace();
-			return;
+			return false;
 		}
 		monitor.worked(4);
 		undoMan.aboutToPerformChange(change);
@@ -120,7 +121,7 @@ public class CodeImpRefactoring {
 			fUndoChange = change.perform(new SubProgressMonitor(monitor, 1));
 		} catch (CoreException e) {
 			e.printStackTrace();
-			return;
+			return false;
 		}
 		monitor.worked(5);
 		change.dispose();
@@ -131,6 +132,6 @@ public class CodeImpRefactoring {
 			undoMan.addUndo(refactoring.getName(), fUndoChange);
 		}
 		monitor.worked(6);
+		return true;
 	}
-
 }

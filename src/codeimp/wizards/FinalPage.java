@@ -52,7 +52,7 @@ public class FinalPage extends WizardPage {
 				if (map.size() == 0) {
 					MessageDialog.openInformation(getShell(), "Message",
 							"There is no improvement for the selected item.");
-					getShell().close();
+//					getShell().close();
 				}
 				tableViewer.setInput(map);
 			}
