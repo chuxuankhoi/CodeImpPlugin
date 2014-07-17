@@ -120,7 +120,7 @@ public abstract class CodeImpAbstract {
 	public double calCurrentScore() {
 		if (codeSelection == null || sourceFile == null) {
 			printLog("calCurrentScore - Lack of information about the experiment.");
-			return 0;
+			return Double.MAX_VALUE;
 		}
 		IJavaElement[] elements = null;
 		try {
@@ -131,7 +131,7 @@ public abstract class CodeImpAbstract {
 		}
 		if (elements == null) {
 			printLog("calCurrentScore - No element found by identifier.");
-			return 0;
+			return Double.MAX_VALUE;
 		}
 		double score = 0;
 		for (IJavaElement element : elements) {

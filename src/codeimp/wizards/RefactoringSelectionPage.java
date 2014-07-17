@@ -40,7 +40,6 @@ public class RefactoringSelectionPage extends WizardPage {
 		return null;
 	}
 
-	private boolean isFirstTime = true;
 	private CheckboxTableViewer checkboxTableViewer = null;
 	private String selectedAction = null;
 
@@ -68,36 +67,35 @@ public class RefactoringSelectionPage extends WizardPage {
 		container.addPaintListener(new PaintListener() {
 			@Override
 			public void paintControl(PaintEvent arg0) {
-				if (isFirstTime) {
-					isFirstTime = false;
-					AnalysisPage previousPage = (AnalysisPage) getSuperPreviousPage();
-					Map<String, Double> results = previousPage.getResults();
-					if (results == null || results.size() == 0) {
-						MessageDialog
-								.openInformation(getShell(), "Message",
-										"There is no improvement for the selected item.");
-						getShell().close();
-					}
-					// Get top MAXIMUM_ACTIONS actions to push to the table
-					results = CodeImpUtils.sortByComparator(results,
-							CodeImpUtils.DESC);
-					String[] sortedActions = new String[results.keySet().size()];
-					sortedActions = results.keySet().toArray(sortedActions);
-					Map<String, Double> topActions = new HashMap<String, Double>();
-					int maxAction = results.size() < MAXIMUM_ACTIONS ? results
-							.size() : MAXIMUM_ACTIONS;
-					for (int i = 0; i < maxAction; i++) {
-						double value = results.get(sortedActions[i]);
-						if (value > 0) {
-							topActions.put(sortedActions[i], value);
-						}
-					}
-					if (topActions.size() == 0) {
-						CodeImpUtils.printLog("No improvement found.");
-						getWizard().dispose();
-					}
-					checkboxTableViewer.setInput(topActions);
+				AnalysisPage previousPage = (AnalysisPage) getSuperPreviousPage();
+				Map<String, Double> results = previousPage.getResults();
+				if (results == null || results.size() == 0) {
+					MessageDialog.openInformation(getShell(), "Message",
+							"There is no improvement for the selected item.");
+					getShell().close();
+					return;
 				}
+				// Get top MAXIMUM_ACTIONS actions to push to the table
+				results = CodeImpUtils.sortByComparator(results,
+						CodeImpUtils.DESC);
+				String[] sortedActions = new String[results.keySet().size()];
+				sortedActions = results.keySet().toArray(sortedActions);
+				Map<String, Double> topActions = new HashMap<String, Double>();
+				int maxAction = results.size() < MAXIMUM_ACTIONS ? results
+						.size() : MAXIMUM_ACTIONS;
+				for (int i = 0; i < maxAction; i++) {
+					double value = results.get(sortedActions[i]);
+					if (value > 0) {
+						topActions.put(sortedActions[i], value);
+					}
+				}
+				if (topActions.size() == 0) {
+					MessageDialog.openInformation(getShell(), "Message",
+							"There is no improvement for the selected item.");
+					getShell().close();
+					return;
+				}
+				checkboxTableViewer.setInput(topActions);
 			}
 
 		});

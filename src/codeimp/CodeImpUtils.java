@@ -6,6 +6,7 @@ package codeimp;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
+import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.LinkedList;
 import java.util.List;
@@ -392,5 +393,14 @@ public final class CodeImpUtils {
 		}
 
 		return sortedMap;
+	}
+	
+	@SuppressWarnings("rawtypes")
+	public static void printMap(Map<?, ?> mp) {
+	    Iterator<?> it = mp.entrySet().iterator();
+	    while (it.hasNext()) {
+	        Map.Entry pairs = (Map.Entry)it.next();
+	        System.out.println(pairs.getKey() + " = " + pairs.getValue());
+	    }
 	}
 }
