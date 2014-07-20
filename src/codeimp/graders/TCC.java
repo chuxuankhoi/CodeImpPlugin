@@ -24,7 +24,6 @@ public class TCC implements IGrader {
 			fields = type.getFields();
 			methods = type.getMethods();
 		} catch (JavaModelException e) {
-//			e.printStackTrace();
 			return 0;
 		}
 
@@ -33,6 +32,9 @@ public class TCC implements IGrader {
 		sp = calculateConnectedPairs(methods, fields, file);
 
 		// Calculate TCC
+		if(np == 0) {
+			return 0;
+		}
 		return sp / np;
 	}
 

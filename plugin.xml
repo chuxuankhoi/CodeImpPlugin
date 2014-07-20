@@ -9,7 +9,6 @@
             label="Code Improvement"
             visible="true">
          <menu
-               icon="icons/no-smell.png"
                id="CodeImpPlugin.menu"
                label="Code Improvement"
                path="additions">
@@ -29,6 +28,13 @@
                style="push"
                toolbarPath="Normal/additions"
                tooltip="Remove code smell">
+         </action>
+         <action
+               class="codeimp.graders.test.TestActionDelegation"
+               id="CodeImpPlugin.action1"
+               label="Test"
+               menubarPath="CodeImpPlugin.menu/content"
+               style="push">
          </action>
       </actionSet>
    </extension>

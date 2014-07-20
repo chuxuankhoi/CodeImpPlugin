@@ -136,7 +136,7 @@ public final class CodeImpUtils {
 		ICompilationUnit cu = JavaCore.createCompilationUnitFrom(file);
 		String sourceCode = cu.getSource();
 
-		String[] words = code.split("[ \t\\x0b\n(){}'\";,.]");
+		String[] words = code.split("[ \t\\x0b\n(){}'\";,.!\\+-/\\*&=%<>\\?\\|:]");
 		int oldOffset = sourceCode.indexOf(code, 0);
 		if (oldOffset == -1) {
 			// printLog("Code seems not be a part of the file");
@@ -290,11 +290,17 @@ public final class CodeImpUtils {
 	}
 
 	public static int combination(int n, int k) {
+		if(k <= 0 || (n - k) <= 0) {
+			return 0;
+		}
 		return permutation(n) / (permutation(k) * permutation(n - k));
 	}
 
 	public static int permutation(int n) {
-		if (n <= 1) {
+		if(n < 1) {
+			return 0;
+		}
+		if (n == 1) {
 			return 1;
 		}
 		return n * permutation(n - 1);
@@ -402,5 +408,12 @@ public final class CodeImpUtils {
 	        Map.Entry pairs = (Map.Entry)it.next();
 	        System.out.println(pairs.getKey() + " = " + pairs.getValue());
 	    }
+	}
+	
+	public static void printJElementArray(IJavaElement[] array) {
+		System.out.println(array.toString() + ": ");
+		for(int i = 0; i < array.length; i++) {
+			System.out.println("Item " + i + ": " + array[i].getElementName());
+		}
 	}
 }
