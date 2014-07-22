@@ -40,8 +40,8 @@ public class LongMethod implements IGrader {
 				return 0;
 			}
 		} catch (JavaModelException e) {
-			e.printStackTrace();
-			return 0;
+//			e.printStackTrace();
+			return Double.MAX_VALUE;
 		}
 		int loc = countLOC(body);
 		System.out.println("LoC: " + loc);

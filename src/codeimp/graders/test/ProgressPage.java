@@ -22,8 +22,11 @@ import org.eclipse.swt.layout.GridLayout;
 import org.eclipse.swt.widgets.Composite;
 import org.eclipse.swt.widgets.Display;
 
+import codeimp.graders.EmptyClass;
+import codeimp.graders.InheritedRatio;
 import codeimp.graders.LCOM2;
 import codeimp.graders.LCOM5;
+import codeimp.graders.SharedMethodsInChildren;
 import codeimp.graders.TCC;
 import codeimp.wizards.CodeImpProgressBar;
 
@@ -135,6 +138,14 @@ public class ProgressPage extends WizardPage {
 									System.out.println("LCOM5: " + grader2.getScore());
 									TCC grader3 = new TCC(type, (IFile) res);
 									System.out.println("TCC: " + grader3.getScore());
+									if(type.getElementName().equals("GivenClass")) {
+									InheritedRatio grader4 = new InheritedRatio(type);
+									System.out.println("InheritedRatio: " + grader4.getScore());
+									SharedMethodsInChildren grader5 = new SharedMethodsInChildren(type);
+									System.out.println("SharedMethodsInChildren: " + grader5.getScore());
+									EmptyClass grader6 = new EmptyClass(type);
+									System.out.println("EmptyClass: " + grader6.getScore());
+									}
 								}
 								minorCount++;
 								minorProgressBar.setSelection(minorCount);

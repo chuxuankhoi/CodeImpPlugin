@@ -115,7 +115,7 @@ public class CodeImpRefactoringManager {
 				}
 			}
 		}
-		// actionsList.add(IJavaRefactorings.EXTRACT_CLASS);
+//		 actionsList.add(IJavaRefactorings.PUSH_DOWN);
 
 	}
 
@@ -374,6 +374,7 @@ public class CodeImpRefactoringManager {
 				IType currentType = (IType) rootElement;
 				IType superType = getSuperType(currentType, sourceFile);
 				if (superType == null) {
+					System.out.println("No super class");
 					return null;
 				}
 				IField[] fields = ((IType) rootElement).getFields();
@@ -382,16 +383,17 @@ public class CodeImpRefactoringManager {
 					RefactoringPair pair = new RefactoringPair();
 					pair.action = IJavaRefactorings.PULL_UP;
 					pair.element = f;
+					pair.addition = superType;
 					pairList.add(pair);
 				}
 				for (IMethod m : methods) {
 					RefactoringPair pair = new RefactoringPair();
 					pair.action = IJavaRefactorings.PULL_UP;
 					pair.element = m;
+					pair.addition = superType;
 					pairList.add(pair);
 				}
 			} catch (JavaModelException e) {
-				e.printStackTrace();
 				return null;
 			}
 		}
@@ -573,8 +575,7 @@ public class CodeImpRefactoringManager {
 		try {
 			icu.delete(true, null);
 		} catch (JavaModelException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
+//			e.printStackTrace();
 		}
 		tmpClass = null;
 	}

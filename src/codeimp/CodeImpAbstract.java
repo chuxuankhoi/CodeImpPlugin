@@ -127,7 +127,7 @@ public abstract class CodeImpAbstract {
 			elements = CodeImpUtils.identifyElements(codeSelection.getText(),
 					sourceFile);
 		} catch (JavaModelException e) {
-			e.printStackTrace();
+//			e.printStackTrace();
 		}
 		if (elements == null) {
 			printLog("calCurrentScore - No element found by identifier.");

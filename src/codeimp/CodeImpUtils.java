@@ -271,6 +271,7 @@ public final class CodeImpUtils {
 			return null;
 		}
 		body = body.substring(firstIndex + 1, lastIndex);
+		body = body.trim();
 		return body;
 	}
 

@@ -33,8 +33,8 @@ public class LCOM5 implements IGrader {
 			fields = type.getFields();
 			methods = type.getMethods();
 		} catch (JavaModelException e) {
-			e.printStackTrace();
-			return 0;
+//			e.printStackTrace();
+			return Double.MAX_VALUE;
 		}
 		k = methods.length;
 		l = fields.length;

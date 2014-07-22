@@ -62,8 +62,8 @@ public class LCOM2 implements IGrader {
 				return 0;
 			}
 		} catch (CoreException e) {
-			e.printStackTrace();
-			return 0;
+//			e.printStackTrace();
+			return Double.MAX_VALUE;
 		}
 	}
 }

@@ -19,10 +19,13 @@ import org.eclipse.jdt.core.refactoring.IJavaRefactorings;
 import org.eclipse.jface.text.ITextSelection;
 import org.eclipse.ui.IWorkbenchWindow;
 
+import codeimp.graders.EmptyClass;
 import codeimp.graders.IGrader;
+import codeimp.graders.InheritedRatio;
 import codeimp.graders.LCOM2;
 import codeimp.graders.LCOM5;
 import codeimp.graders.LongMethod;
+import codeimp.graders.SharedMethodsInChildren;
 import codeimp.graders.TCC;
 import codeimp.refactoring.CodeImpRefactoring;
 import codeimp.refactoring.CodeImpRefactoringManager;
@@ -144,6 +147,7 @@ public class CodeImpHillClimbing extends CodeImpAbstract {
 										+ ((ITextSelection) (pairs[k].element))
 												.getText());
 							}
+							System.out.println("Old score: " + oldScore);
 							CodeImpRefactoring refactoring = new CodeImpRefactoring(
 									pairs[k], sourceFile);
 							totalRefactoring++;
@@ -165,6 +169,7 @@ public class CodeImpHillClimbing extends CodeImpAbstract {
 							} catch (CoreException e) {
 							}
 							double curScore = calCurrentScore();
+							System.out.println("Current score: " + curScore);
 							if (curScore < oldScore) {
 								savedRefactoring.put(pairs[k],
 										(oldScore - curScore));
@@ -179,6 +184,7 @@ public class CodeImpHillClimbing extends CodeImpAbstract {
 									}
 								}
 								if (curScore > oldScore) {
+									printLog("Current score is greater than the old score");
 									finishAction(actionList[i], bar);
 									break;
 								}
@@ -236,6 +242,12 @@ public class CodeImpHillClimbing extends CodeImpAbstract {
 				grader = new LCOM5((IType) element, sourceFile);
 				score += grader == null ? 0 : grader.getScore();
 				grader = new TCC((IType) element, sourceFile);
+				score += grader == null ? 0 : grader.getScore();
+				grader = new InheritedRatio((IType) element);
+				score += grader == null ? 0 : grader.getScore();
+				grader = new SharedMethodsInChildren((IType) element);
+				score += grader == null ? 0 : grader.getScore();
+				grader = new EmptyClass((IType) element);
 				score += grader == null ? 0 : grader.getScore();
 			}
 		} else if (element instanceof IMethod) {
