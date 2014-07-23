@@ -14,6 +14,7 @@ import java.util.Set;
 
 import org.eclipse.core.resources.IFile;
 import org.eclipse.core.resources.IResource;
+import org.eclipse.core.runtime.Assert;
 import org.eclipse.core.runtime.CoreException;
 import org.eclipse.core.runtime.NullProgressMonitor;
 import org.eclipse.jdt.core.ICompilationUnit;
@@ -115,7 +116,7 @@ public class CodeImpRefactoringManager {
 				}
 			}
 		}
-//		 actionsList.add(IJavaRefactorings.PUSH_DOWN);
+		// actionsList.add(IJavaRefactorings.PUSH_DOWN);
 
 	}
 
@@ -505,7 +506,7 @@ public class CodeImpRefactoringManager {
 			IFile sourceFile) throws JavaModelException {
 		RefactoringPair[] pairs = null;
 		IType dest = getTmpClass(rootElement);
-		if (rootElement instanceof IMember) {
+		if (rootElement instanceof IMethod || rootElement instanceof IField) {
 			RefactoringPair p = new RefactoringPair();
 			p.action = IJavaRefactorings.MOVE;
 			p.element = rootElement;
@@ -575,7 +576,7 @@ public class CodeImpRefactoringManager {
 		try {
 			icu.delete(true, null);
 		} catch (JavaModelException e) {
-//			e.printStackTrace();
+			// e.printStackTrace();
 		}
 		tmpClass = null;
 	}
@@ -789,9 +790,55 @@ public class CodeImpRefactoringManager {
 								.getJavaProject()));
 		IType superType = (IType) pair.addition;
 		processor.setDestinationType(superType);
+		// Assign methods that should be deleted
+		if (pair.element instanceof IMethod) {
+			// Get all brothers of current type
+			ITypeHierarchy hierachy = superType
+					.newTypeHierarchy(new NullProgressMonitor());
+			IType[] types = hierachy.getSubtypes(superType);
+			// Get all methods that the same with the element
+			IMethod[] deletedMethods = getDuplicatedMethods(
+					(IMethod) pair.element, types);
+			// Set deleted items
+			if (deletedMethods != null) {
+				processor.setDeletedMethods(deletedMethods);
+			}
+		}
 
 		Refactoring refactoring = new ProcessorBasedRefactoring(processor);
 		return refactoring;
+	}
+
+	private IMethod[] getDuplicatedMethods(IMethod method, IType[] types) {
+		if (method == null) {
+			return null;
+		}
+		ArrayList<IMethod> retMethods = new ArrayList<IMethod>();
+		for (IType t : types) {
+			IMethod[] methods = null;
+			try {
+				methods = t.getMethods();
+			} catch (JavaModelException e) {
+				e.printStackTrace();
+			}
+			if (methods != null) {
+				for (IMethod m : methods) {
+					try {
+						// TODO prevent NullPointException error
+						if(CodeImpUtils.getBody(m).equals(CodeImpUtils.getBody(method))) {
+							retMethods.add(m);
+						}
+					} catch (JavaModelException e) {
+						e.printStackTrace();
+					}
+				}
+			}
+		}
+		if (retMethods.size() == 0) {
+			return null;
+		} else {
+			return retMethods.toArray(new IMethod[retMethods.size()]);
+		}
 	}
 
 	private Refactoring createMoveStaticRefactoring(RefactoringPair pair,

@@ -101,10 +101,18 @@ public class CodeImpRefactoring {
 			status = refactoring.checkFinalConditions(monitor);
 		} catch (OperationCanceledException | CoreException e) {
 			e.printStackTrace();
+			throw new OperationCanceledException();
+		}
+		if(status.hasWarning()) {
+			printLog("WARNING - " + status.getMessageMatchingSeverity(RefactoringStatus.WARNING));
 		}
 		if (status.hasFatalError()) {
-			printLog(status.getMessageMatchingSeverity(RefactoringStatus.FATAL));
+			printLog("FATAL - " + status.getMessageMatchingSeverity(RefactoringStatus.FATAL));
 			throw new OperationCanceledException();
+		}
+		if(status.hasError()) {
+			printLog("ERROR - " + status.getMessageMatchingSeverity(RefactoringStatus.ERROR));
+//			throw new OperationCanceledException();
 		}
 		monitor.worked(3);
 		Change change;

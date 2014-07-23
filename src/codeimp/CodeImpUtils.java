@@ -3,6 +3,7 @@
  */
 package codeimp;
 
+import java.lang.reflect.Array;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
@@ -12,6 +13,7 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
+import java.util.Random;
 
 import org.eclipse.core.resources.IFile;
 import org.eclipse.core.resources.IProject;
@@ -136,7 +138,8 @@ public final class CodeImpUtils {
 		ICompilationUnit cu = JavaCore.createCompilationUnitFrom(file);
 		String sourceCode = cu.getSource();
 
-		String[] words = code.split("[ \t\\x0b\n(){}'\";,.!\\+-/\\*&=%<>\\?\\|:]");
+		String[] words = code
+				.split("[ \t\\x0b\n(){}'\";,.!\\+-/\\*&=%<>\\?\\|:]");
 		int oldOffset = sourceCode.indexOf(code, 0);
 		if (oldOffset == -1) {
 			// printLog("Code seems not be a part of the file");
@@ -291,14 +294,14 @@ public final class CodeImpUtils {
 	}
 
 	public static int combination(int n, int k) {
-		if(k <= 0 || (n - k) <= 0) {
+		if (k <= 0 || (n - k) <= 0) {
 			return 0;
 		}
 		return permutation(n) / (permutation(k) * permutation(n - k));
 	}
 
 	public static int permutation(int n) {
-		if(n < 1) {
+		if (n < 1) {
 			return 0;
 		}
 		if (n == 1) {
@@ -370,9 +373,9 @@ public final class CodeImpUtils {
 
 		return ret;
 	}
-	
+
 	public static boolean ASC = true;
-    public static boolean DESC = false;
+	public static boolean DESC = false;
 
 	public static Map<String, Double> sortByComparator(
 			Map<String, Double> unsortMap, final boolean order) {
@@ -401,20 +404,31 @@ public final class CodeImpUtils {
 
 		return sortedMap;
 	}
-	
+
 	@SuppressWarnings("rawtypes")
 	public static void printMap(Map<?, ?> mp) {
-	    Iterator<?> it = mp.entrySet().iterator();
-	    while (it.hasNext()) {
-	        Map.Entry pairs = (Map.Entry)it.next();
-	        System.out.println(pairs.getKey() + " = " + pairs.getValue());
-	    }
+		Iterator<?> it = mp.entrySet().iterator();
+		while (it.hasNext()) {
+			Map.Entry pairs = (Map.Entry) it.next();
+			System.out.println(pairs.getKey() + " = " + pairs.getValue());
+		}
 	}
-	
+
 	public static void printJElementArray(IJavaElement[] array) {
 		System.out.println(array.toString() + ": ");
-		for(int i = 0; i < array.length; i++) {
+		for (int i = 0; i < array.length; i++) {
 			System.out.println("Item " + i + ": " + array[i].getElementName());
+		}
+	}
+
+	public static void shuffleArray(Object[] input) {
+		Random rnd = new Random();
+		for (int i = input.length - 1; i > 0; i--) {
+			int index = rnd.nextInt(i + 1);
+			// Simple swap
+			Object a = input[index];
+			input[index] = input[i];
+			input[i] = a;
 		}
 	}
 }

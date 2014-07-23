@@ -25,6 +25,7 @@ import codeimp.graders.InheritedRatio;
 import codeimp.graders.LCOM2;
 import codeimp.graders.LCOM5;
 import codeimp.graders.LongMethod;
+import codeimp.graders.SharedMethods;
 import codeimp.graders.SharedMethodsInChildren;
 import codeimp.graders.TCC;
 import codeimp.refactoring.CodeImpRefactoring;
@@ -124,6 +125,7 @@ public class CodeImpHillClimbing extends CodeImpAbstract {
 						if (pairs == null) {
 							continue;
 						}
+//						CodeImpUtils.shuffleArray(pairs);
 						printLog("Pairs number: " + pairs.length);
 						for (int k = 0; k < pairs.length; k++) {
 							if (isCancelled) {
@@ -183,11 +185,11 @@ public class CodeImpHillClimbing extends CodeImpAbstract {
 									} catch (CoreException e) {
 									}
 								}
-								if (curScore > oldScore) {
-									printLog("Current score is greater than the old score");
-									finishAction(actionList[i], bar);
-									break;
-								}
+//								if (curScore > oldScore) {
+//									printLog("Current score is greater than the old score");
+//									finishAction(actionList[i], bar);
+//									break;
+//								}
 								try {
 									wait(500);
 								} catch (InterruptedException e) {
@@ -229,6 +231,9 @@ public class CodeImpHillClimbing extends CodeImpAbstract {
 		}
 	}
 
+	/**
+	 * Weight-sum approach
+	 */
 	protected double scoreElement(IJavaElement element) {
 		// TODO Select appropriate scoring function for element based on its
 		// type
@@ -237,17 +242,26 @@ public class CodeImpHillClimbing extends CodeImpAbstract {
 		if (element instanceof IType) {
 			if (CodeImpUtils.isInProject((IType) element,
 					sourceFile.getProject())) {
-				grader = new LCOM2((IType) element, sourceFile);
-				score += grader == null ? 0 : grader.getScore();
-				grader = new LCOM5((IType) element, sourceFile);
-				score += grader == null ? 0 : grader.getScore();
+				// TODO solve unexpected results of move, pull up and rename
+//				grader = new LCOM2((IType) element, sourceFile);
+//				score += grader == null ? 0 : grader.getScore();
+//				grader = new LCOM5((IType) element, sourceFile);
+//				System.out.println("LCOM5: " + grader.getScore());
+//				score += grader == null ? 0 : grader.getScore();
 				grader = new TCC((IType) element, sourceFile);
+//				System.out.println("TCC: " + grader.getScore());
 				score += grader == null ? 0 : grader.getScore();
-				grader = new InheritedRatio((IType) element);
-				score += grader == null ? 0 : grader.getScore();
+//				grader = new InheritedRatio((IType) element);
+//				System.out.println("InheritedRatio: " + grader.getScore());
+//				score += grader == null ? 0 : grader.getScore();
 				grader = new SharedMethodsInChildren((IType) element);
+//				System.out.println("SharedMethodsInChildren: " + grader.getScore());
+				score += grader == null ? 0 : grader.getScore();
+				grader = new SharedMethods((IType) element);
+//				System.out.println("SharedMethods: " + grader.getScore());
 				score += grader == null ? 0 : grader.getScore();
 				grader = new EmptyClass((IType) element);
+//				System.out.println("EmptyClass: " + grader.getScore());
 				score += grader == null ? 0 : grader.getScore();
 			}
 		} else if (element instanceof IMethod) {

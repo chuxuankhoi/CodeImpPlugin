@@ -109,8 +109,7 @@ public class InheritedRatio implements IGrader {
 
 		aMethodsNum = avaiMethods.size();
 
-		// System.out.println("Available methods number: " + aMethodsNum
-		// + "\nInherited methods number: " + iMethodsNum);
+		// TODO normalize the score
 		if (iMethodsNum == 0) {
 			return Double.MAX_VALUE;
 		} else {
@@ -152,8 +151,8 @@ public class InheritedRatio implements IGrader {
 
 	/**
 	 * Function to calculate the dependency of the given value to a constant
-	 * (IDEAL_RATIO). The function should satisfy: (f(a) -> a when a ->
-	 * IDEAL_RATIO) and (f(a) -> inf. when a -> inf. or a -> 1)
+	 * (IDEAL_RATIO). The function should satisfy: (f(a) -> 0 when a ->
+	 * IDEAL_RATIO) and (f(a) -> 1 when a -> inf. or a -> 1)
 	 * 
 	 * @param a
 	 * @return

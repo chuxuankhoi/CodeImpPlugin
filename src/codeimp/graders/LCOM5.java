@@ -43,6 +43,7 @@ public class LCOM5 implements IGrader {
 			try {
 				usedFields = CodeImpUtils.getFieldsInMethod(m, fields, file);
 			} catch (JavaModelException e) {
+				e.printStackTrace();
 				continue;
 			}
 			if (usedFields != null) {
