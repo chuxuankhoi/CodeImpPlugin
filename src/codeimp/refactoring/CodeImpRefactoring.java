@@ -112,7 +112,7 @@ public class CodeImpRefactoring {
 		}
 		if(status.hasError()) {
 			printLog("ERROR - " + status.getMessageMatchingSeverity(RefactoringStatus.ERROR));
-//			throw new OperationCanceledException();
+			throw new OperationCanceledException();
 		}
 		monitor.worked(3);
 		Change change;

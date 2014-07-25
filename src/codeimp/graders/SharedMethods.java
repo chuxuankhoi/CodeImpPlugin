@@ -20,6 +20,7 @@ public class SharedMethods extends SharedMethodsAbstract implements IGrader {
 			e.printStackTrace();
 		}
 		if(brothers == null) {
+			System.out.println("Cannot get the brothers");
 			return 0;
 		} else {
 			return getScoreOfGroup(brothers);
@@ -31,7 +32,8 @@ public class SharedMethods extends SharedMethodsAbstract implements IGrader {
 		IType superClass = hierachy.getSuperclass(type);
 		if(superClass == null) {
 			return null;
-		}		
+		}
+		hierachy = superClass.newTypeHierarchy(new NullProgressMonitor());
 		return hierachy.getSubtypes(superClass);
 	}
 

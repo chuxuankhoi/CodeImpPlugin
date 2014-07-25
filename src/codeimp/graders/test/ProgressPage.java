@@ -7,6 +7,7 @@ import org.eclipse.core.resources.IWorkspace;
 import org.eclipse.core.resources.IWorkspaceRoot;
 import org.eclipse.core.resources.ResourcesPlugin;
 import org.eclipse.jdt.core.ICompilationUnit;
+import org.eclipse.jdt.core.IJavaElement;
 import org.eclipse.jdt.core.IJavaProject;
 import org.eclipse.jdt.core.IPackageFragment;
 import org.eclipse.jdt.core.IPackageFragmentRoot;
@@ -26,6 +27,7 @@ import codeimp.graders.EmptyClass;
 import codeimp.graders.InheritedRatio;
 import codeimp.graders.LCOM2;
 import codeimp.graders.LCOM5;
+import codeimp.graders.SharedMethods;
 import codeimp.graders.SharedMethodsInChildren;
 import codeimp.graders.TCC;
 import codeimp.wizards.CodeImpProgressBar;
@@ -34,8 +36,10 @@ public class ProgressPage extends WizardPage {
 
 	protected abstract class CancellableThread extends Thread {
 		protected volatile boolean isCancelled = false;
+		protected CodeImpProgressBar progressBar = null;
 
-		CancellableThread() {
+		CancellableThread(CodeImpProgressBar progressBar) {
+			this.progressBar = progressBar;
 		}
 
 		public abstract void run();
@@ -46,11 +50,10 @@ public class ProgressPage extends WizardPage {
 	}
 
 	private Composite container = null;
-	private Composite progressBarComposite = null;
-	private CodeImpProgressBar progressBar = null;
 	protected int processBarStyle = SWT.SMOOTH; // process bar style
 	private Display display = null;
 	private CancellableThread thread = null;
+	private CodeImpProgressBar progressBar = null;
 
 	public ProgressPage(String pageName) {
 		super(pageName);
@@ -71,7 +74,7 @@ public class ProgressPage extends WizardPage {
 		container.setLayout(gLayout);
 		display = container.getDisplay();
 
-		progressBarComposite = new Composite(container, SWT.NONE);
+		Composite progressBarComposite = new Composite(container, SWT.NONE);
 		progressBarComposite.setLayoutData(new GridData(GridData.FILL,
 				GridData.CENTER, true, false));
 		progressBarComposite.setLayout(new FillLayout());
@@ -91,7 +94,7 @@ public class ProgressPage extends WizardPage {
 
 		setControl(container);
 
-		thread = new CancellableThread() {
+		thread = new CancellableThread(progressBar) {
 
 			@Override
 			public void run() {
@@ -103,19 +106,30 @@ public class ProgressPage extends WizardPage {
 					return;
 				}
 				IJavaProject jProject = JavaCore.create(project);
-				IPackageFragment[] packages = null;
+				IJavaElement[] packages = null;
 				try {
-					packages = jProject.getPackageFragments();
+					IPackageFragmentRoot[] roots = jProject.getPackageFragmentRoots();
+					for(IPackageFragmentRoot root:roots) {
+						if(root.isExternal()) {
+							continue;
+						}
+						System.out.println("Root: " + root.getElementName());
+						packages = root.getChildren();
+						for(IJavaElement e:packages) {
+							System.out.println("Child: " + e.getElementName());
+						}
+					}
 				} catch (JavaModelException e) {
 					e.printStackTrace();
 					return;
 				}
+				System.out.println("packages length: " + packages.length);
 				progressBar.setMaximum(packages.length);
 				int count = 1;
-				for (IPackageFragment pkg : packages) {
+				for (IJavaElement pkg : packages) {
 					try {
-						if (pkg.getKind() == IPackageFragmentRoot.K_SOURCE) {
-							ICompilationUnit[] units = pkg
+						if (((IPackageFragment) pkg).getKind() == IPackageFragmentRoot.K_SOURCE) {
+							ICompilationUnit[] units = ((IPackageFragment) pkg)
 									.getCompilationUnits();
 							minorProgressBar.setMaximum(units.length);
 							minorProgressBar.setSelection(0);
@@ -132,19 +146,21 @@ public class ProgressPage extends WizardPage {
 									if(isCancelled) {
 										return;
 									}
+									if(type.getElementName().equals("Child1")) {
 									LCOM2 grader1 = new LCOM2(type, (IFile) res);
 									System.out.println("LCOM2: " + grader1.getScore());
 									LCOM5 grader2 = new LCOM5(type, (IFile) res);
 									System.out.println("LCOM5: " + grader2.getScore());
 									TCC grader3 = new TCC(type, (IFile) res);
-									System.out.println("TCC: " + grader3.getScore());
-									if(type.getElementName().equals("GivenClass")) {
+									System.out.println("TCC: " + grader3.getScore());									
 									InheritedRatio grader4 = new InheritedRatio(type);
 									System.out.println("InheritedRatio: " + grader4.getScore());
 									SharedMethodsInChildren grader5 = new SharedMethodsInChildren(type);
 									System.out.println("SharedMethodsInChildren: " + grader5.getScore());
-									EmptyClass grader6 = new EmptyClass(type);
-									System.out.println("EmptyClass: " + grader6.getScore());
+									SharedMethods grader6 = new SharedMethods(type);
+									System.out.println("SharedMethods: " + grader6.getScore());
+									EmptyClass grader7 = new EmptyClass(type);
+									System.out.println("EmptyClass: " + grader7.getScore());
 									}
 								}
 								minorCount++;

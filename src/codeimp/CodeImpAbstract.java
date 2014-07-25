@@ -19,10 +19,11 @@ public abstract class CodeImpAbstract {
 
 	protected abstract class CancellableThread extends Thread {
 		protected CodeImpProgressBar bar = null;
-		protected volatile boolean isCancelled = false;
+		protected boolean isCancelled = false;
 
 		CancellableThread(CodeImpProgressBar progressBar) {
 			bar = progressBar;
+			isCancelled = false;
 		}
 
 		public abstract void run();

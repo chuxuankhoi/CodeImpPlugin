@@ -25,7 +25,6 @@ public class EmptyClass implements IGrader {
 		try {
 			children = type.getChildren();
 		} catch (JavaModelException e) {
-			// TODO Auto-generated catch block
 			e.printStackTrace();
 		}
 		if(children == null || children.length == 0) {

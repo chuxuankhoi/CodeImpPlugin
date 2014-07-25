@@ -3,7 +3,6 @@
  */
 package codeimp;
 
-import java.lang.reflect.Array;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
@@ -264,6 +263,9 @@ public final class CodeImpUtils {
 	}
 
 	public static String getBody(IMethod method) throws JavaModelException {
+		if(method == null) {
+			return null;
+		}
 		String body = method.getSource();
 		if (body == null) {
 			return null;
@@ -415,7 +417,6 @@ public final class CodeImpUtils {
 	}
 
 	public static void printJElementArray(IJavaElement[] array) {
-		System.out.println(array.toString() + ": ");
 		for (int i = 0; i < array.length; i++) {
 			System.out.println("Item " + i + ": " + array[i].getElementName());
 		}

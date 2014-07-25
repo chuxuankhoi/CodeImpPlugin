@@ -45,13 +45,12 @@ public class TCC implements IGrader {
 		for (int i = 0; i < mLen; i++) {
 			for (int j = i + 1; j < mLen; j++) {
 				try {
-					// TODO solve cannot see extracted(String)
 					if (CodeImpUtils.calculateSharedFields(methods[i],
 							methods[j], fields, methods, sfile, true) > 0) {
 						count++;
 					}
 				} catch (JavaModelException e) {
-					e.printStackTrace();
+//					e.printStackTrace();
 				}
 			}
 		}

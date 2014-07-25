@@ -10,6 +10,7 @@ import org.eclipse.swt.layout.GridLayout;
 import org.eclipse.swt.widgets.Composite;
 import org.eclipse.swt.widgets.Display;
 import codeimp.CodeImpAbstract;
+import codeimp.CodeImpUtils;
 
 public class AnalysisPage extends WizardPage {
 
@@ -18,10 +19,9 @@ public class AnalysisPage extends WizardPage {
 	private Composite progressBarComposite = null;
 	private CodeImpProgressBar progressBar = null;
 	protected int processBarStyle = SWT.SMOOTH; // process bar style
-
 	protected CodeImpAbstract improvementJob = null;
-
 	private Display display;
+	private long startTime = 0;
 
 	protected AnalysisPage(String pageName, CodeImpAbstract improvement) {
 		super(pageName);
@@ -51,6 +51,7 @@ public class AnalysisPage extends WizardPage {
 
 		setControl(container);
 
+		startTime = System.currentTimeMillis();
 		improvementJob.runImprovement(progressBar);
 
 		setPageComplete(false);
@@ -79,6 +80,8 @@ public class AnalysisPage extends WizardPage {
 	}
 
 	public void notifyCompleted() {
+		long curTime = System.currentTimeMillis();
+		CodeImpUtils.printLog("Elapsed time: " + ((curTime - startTime) / 60000.0));
 		setPageComplete(true);
 		getWizard().getPages();
 		getContainer().showPage(getNextPage());

@@ -14,22 +14,27 @@ import java.util.Set;
 
 import org.eclipse.core.resources.IFile;
 import org.eclipse.core.resources.IResource;
-import org.eclipse.core.runtime.Assert;
 import org.eclipse.core.runtime.CoreException;
 import org.eclipse.core.runtime.NullProgressMonitor;
 import org.eclipse.jdt.core.ICompilationUnit;
 import org.eclipse.jdt.core.IField;
 import org.eclipse.jdt.core.IJavaElement;
 import org.eclipse.jdt.core.IJavaProject;
-import org.eclipse.jdt.core.ILocalVariable;
+//import org.eclipse.jdt.core.ILocalVariable;
 import org.eclipse.jdt.core.IMember;
 import org.eclipse.jdt.core.IMethod;
 import org.eclipse.jdt.core.IPackageFragment;
 import org.eclipse.jdt.core.IPackageFragmentRoot;
+import org.eclipse.jdt.core.ISourceRange;
+import org.eclipse.jdt.core.ISourceReference;
 import org.eclipse.jdt.core.IType;
 import org.eclipse.jdt.core.ITypeHierarchy;
+import org.eclipse.jdt.core.ITypeRoot;
 import org.eclipse.jdt.core.JavaCore;
 import org.eclipse.jdt.core.JavaModelException;
+import org.eclipse.jdt.core.SourceRange;
+import org.eclipse.jdt.core.dom.ASTNode;
+import org.eclipse.jdt.core.dom.CompilationUnit;
 import org.eclipse.jdt.core.dom.IMethodBinding;
 import org.eclipse.jdt.core.dom.ITypeBinding;
 import org.eclipse.jdt.core.dom.IVariableBinding;
@@ -40,8 +45,10 @@ import org.eclipse.jdt.core.refactoring.IJavaRefactorings;
 import org.eclipse.jdt.core.refactoring.descriptors.ExtractClassDescriptor;
 import org.eclipse.jdt.core.refactoring.descriptors.JavaRefactoringDescriptor;
 import org.eclipse.jdt.core.refactoring.descriptors.MoveDescriptor;
-import org.eclipse.jdt.core.refactoring.descriptors.RenameJavaElementDescriptor;
+//import org.eclipse.jdt.core.refactoring.descriptors.RenameJavaElementDescriptor;
 import org.eclipse.jdt.internal.core.refactoring.descriptors.RefactoringSignatureDescriptorFactory;
+import org.eclipse.jdt.internal.corext.dom.Selection;
+import org.eclipse.jdt.internal.corext.dom.SelectionAnalyzer;
 import org.eclipse.jdt.internal.corext.refactoring.RefactoringAvailabilityTester;
 import org.eclipse.jdt.internal.corext.refactoring.code.ExtractMethodRefactoring;
 import org.eclipse.jdt.internal.corext.refactoring.reorg.JavaMoveProcessor;
@@ -65,6 +72,7 @@ import org.eclipse.jdt.internal.ui.refactoring.code.ExtractMethodWizard;
 import org.eclipse.jdt.internal.ui.refactoring.reorg.CreateTargetQueries;
 import org.eclipse.jdt.internal.ui.refactoring.reorg.ReorgMoveWizard;
 import org.eclipse.jdt.internal.ui.refactoring.reorg.ReorgQueries;
+import org.eclipse.jdt.ui.SharedASTProvider;
 import org.eclipse.jface.text.IDocument;
 import org.eclipse.jface.text.ITextSelection;
 import org.eclipse.jface.text.TextSelection;
@@ -116,7 +124,7 @@ public class CodeImpRefactoringManager {
 				}
 			}
 		}
-		// actionsList.add(IJavaRefactorings.PUSH_DOWN);
+//		actionsList.add(IJavaRefactorings.EXTRACT_METHOD);
 
 	}
 
@@ -150,19 +158,19 @@ public class CodeImpRefactoringManager {
 	 *         the refactoring action
 	 */
 	public RefactoringPair[] getRefactoringPairs(IJavaElement rootElement,
-			String action, IFile sourceFile) {
+			String action) {
 		RefactoringPair[] pairs = null;
 		// TODO Get available pairs for the action in the rootElement
 		try {
 			switch (action) {
 			case IJavaRefactorings.RENAME_FIELD:
 				// Get all fields declared in the root element (class)
-				pairs = getRenameFieldPairs(rootElement);
-				break;
+				// pairs = getRenameFieldPairs(rootElement);
+				// break;
 			case IJavaRefactorings.RENAME_LOCAL_VARIABLE:
 				// Get all local variables declared in the root element (method)
-				pairs = getRenameLocalVariablePairs(rootElement, sourceFile);
-				break;
+				// pairs = getRenameLocalVariablePairs(rootElement, sourceFile);
+				// break;
 			case IJavaRefactorings.RENAME_COMPILATION_UNIT:
 			case IJavaRefactorings.RENAME_ENUM_CONSTANT:
 			case IJavaRefactorings.RENAME_JAVA_PROJECT:
@@ -191,7 +199,7 @@ public class CodeImpRefactoringManager {
 			case IJavaRefactorings.EXTRACT_LOCAL_VARIABLE:
 				break;
 			case IJavaRefactorings.EXTRACT_METHOD:
-				pairs = getExtractMethodPairs(rootElement, sourceFile);
+				pairs = getExtractMethodPairs(rootElement);
 				break;
 			case IJavaRefactorings.EXTRACT_SUPERCLASS:
 			case IJavaRefactorings.GENERALIZE_TYPE:
@@ -205,7 +213,7 @@ public class CodeImpRefactoringManager {
 			case IJavaRefactorings.INTRODUCE_PARAMETER_OBJECT:
 				break;
 			case IJavaRefactorings.MOVE:
-				pairs = getMovePairs(rootElement, sourceFile);
+				pairs = getMovePairs(rootElement);
 				break;
 			case IJavaRefactorings.MOVE_METHOD:
 				pairs = getMoveMethodPairs(rootElement);
@@ -215,7 +223,7 @@ public class CodeImpRefactoringManager {
 				break;
 			case IJavaRefactorings.PULL_UP:
 				try {
-					pairs = getPullUpPairs(rootElement, sourceFile);
+					pairs = getPullUpPairs(rootElement);
 				} catch (Exception e) {
 					e.printStackTrace();
 				}
@@ -233,9 +241,11 @@ public class CodeImpRefactoringManager {
 		return pairs;
 	}
 
-	private RefactoringPair[] getExtractMethodPairs(IJavaElement rootElement,
-			IFile file) throws JavaModelException {
+	private RefactoringPair[] getExtractMethodPairs(IJavaElement rootElement)
+			throws JavaModelException {
 		ArrayList<RefactoringPair> pairList = new ArrayList<RefactoringPair>();
+		// Find the source file of the rootElement
+		IFile file = getRootElementFile(rootElement);
 		if (rootElement instanceof IMethod) {
 			getExtractMethodPairsInMethod((IMethod) rootElement, pairList, file);
 		} else if (rootElement instanceof IType) {
@@ -244,6 +254,15 @@ public class CodeImpRefactoringManager {
 		RefactoringPair[] pairs = new RefactoringPair[pairList.size()];
 		pairs = pairList.toArray(pairs);
 		return pairs;
+	}
+
+	private IFile getRootElementFile(IJavaElement rootElement) {
+		IResource res = rootElement.getResource();
+		if (res == null || !(res instanceof IFile)) {
+			return null;
+		} else {
+			return (IFile) res;
+		}
 	}
 
 	private void getExtractMethodPairsInClass(IType rootElement,
@@ -300,22 +319,9 @@ public class CodeImpRefactoringManager {
 				pair.action = IJavaRefactorings.EXTRACT_METHOD;
 				ICompilationUnit cu = JavaCore
 						.createCompilationUnitFrom(sourceFile);
-				String fileCode = cu.getSource();
-				int index = fileCode.indexOf(before);
-				int length = before.length();
-				if (index < 0) {
-					continue;
-				}
-				TextFileDocumentProvider provider = new TextFileDocumentProvider();
-				try {
-					provider.connect(sourceFile);
-				} catch (CoreException e) {
-					e.printStackTrace();
-					return;
-				}
-				IDocument document = provider.getDocument(sourceFile);
-				pair.element = new TextSelection(document, index, length);
+				pair.element = before;
 				pair.addition = cu;
+				pair.resource = sourceFile;
 				pairList.add(pair);
 			}
 
@@ -330,8 +336,10 @@ public class CodeImpRefactoringManager {
 			RefactoringPair pair = new RefactoringPair();
 			pair.action = IJavaRefactorings.PUSH_DOWN;
 			pair.element = rootElement;
+			pair.resource = rootElement.getResource();
 			pairList.add(pair);
 		} else if (rootElement instanceof IType) {
+			IResource resource = rootElement.getResource();
 			try {
 				IField[] fields = ((IType) rootElement).getFields();
 				IMethod[] methods = ((IType) rootElement).getMethods();
@@ -339,12 +347,14 @@ public class CodeImpRefactoringManager {
 					RefactoringPair pair = new RefactoringPair();
 					pair.action = IJavaRefactorings.PUSH_DOWN;
 					pair.element = f;
+					pair.resource = resource;
 					pairList.add(pair);
 				}
 				for (IMethod m : methods) {
 					RefactoringPair pair = new RefactoringPair();
 					pair.action = IJavaRefactorings.PUSH_DOWN;
 					pair.element = m;
+					pair.resource = resource;
 					pairList.add(pair);
 				}
 			} catch (JavaModelException e) {
@@ -357,8 +367,9 @@ public class CodeImpRefactoringManager {
 		return pairs;
 	}
 
-	private RefactoringPair[] getPullUpPairs(IJavaElement rootElement,
-			IFile sourceFile) throws Exception {
+	private RefactoringPair[] getPullUpPairs(IJavaElement rootElement)
+			throws Exception {
+		IFile sourceFile = getRootElementFile(rootElement);
 		ArrayList<RefactoringPair> pairList = new ArrayList<RefactoringPair>();
 		if (rootElement instanceof IMethod) {
 			IType currentType = (IType) rootElement.getParent();
@@ -366,6 +377,7 @@ public class CodeImpRefactoringManager {
 			pair.action = IJavaRefactorings.PULL_UP;
 			pair.element = rootElement;
 			pair.addition = getSuperType(currentType, sourceFile);
+			pair.resource = sourceFile;
 			if (pair.addition == null) {
 				return null;
 			}
@@ -385,6 +397,7 @@ public class CodeImpRefactoringManager {
 					pair.action = IJavaRefactorings.PULL_UP;
 					pair.element = f;
 					pair.addition = superType;
+					pair.resource = sourceFile;
 					pairList.add(pair);
 				}
 				for (IMethod m : methods) {
@@ -392,6 +405,7 @@ public class CodeImpRefactoringManager {
 					pair.action = IJavaRefactorings.PULL_UP;
 					pair.element = m;
 					pair.addition = superType;
+					pair.resource = sourceFile;
 					pairList.add(pair);
 				}
 			} catch (JavaModelException e) {
@@ -432,6 +446,7 @@ public class CodeImpRefactoringManager {
 					p.action = IJavaRefactorings.MOVE_STATIC_MEMBERS;
 					p.element = rootElement;
 					p.addition = dest;
+					p.resource = rootElement.getResource();
 					pairs = new RefactoringPair[] { p };
 				}
 			} else if (rootElement instanceof IType) {
@@ -444,6 +459,7 @@ public class CodeImpRefactoringManager {
 						pair.action = IJavaRefactorings.MOVE_STATIC_MEMBERS;
 						pair.element = f;
 						pair.addition = dest;
+						pair.resource = rootElement.getResource();
 						pairList.add(pair);
 					}
 				}
@@ -456,6 +472,7 @@ public class CodeImpRefactoringManager {
 						pair.action = IJavaRefactorings.MOVE_STATIC_MEMBERS;
 						pair.element = m;
 						pair.addition = dest;
+						pair.resource = rootElement.getResource();
 						pairList.add(pair);
 					}
 				}
@@ -477,6 +494,7 @@ public class CodeImpRefactoringManager {
 			p.action = IJavaRefactorings.MOVE_METHOD;
 			p.element = rootElement;
 			p.addition = dest;
+			p.resource = rootElement.getResource();
 			pairs = new RefactoringPair[] { p };
 		} else if (rootElement instanceof IType) {
 			try {
@@ -490,6 +508,7 @@ public class CodeImpRefactoringManager {
 					pair.action = IJavaRefactorings.MOVE_METHOD;
 					pair.element = m;
 					pair.addition = dest;
+					pair.resource = rootElement.getResource();
 					pairList.add(pair);
 				}
 				pairs = new RefactoringPair[pairList.size()];
@@ -502,34 +521,42 @@ public class CodeImpRefactoringManager {
 		return pairs;
 	}
 
-	private RefactoringPair[] getMovePairs(IJavaElement rootElement,
-			IFile sourceFile) throws JavaModelException {
+	// Not for methods and static elements
+	private RefactoringPair[] getMovePairs(IJavaElement rootElement)
+			throws JavaModelException {
 		RefactoringPair[] pairs = null;
 		IType dest = getTmpClass(rootElement);
-		if (rootElement instanceof IMethod || rootElement instanceof IField) {
+		IFile sourceFile = getRootElementFile(rootElement);
+		if (rootElement instanceof IField) {
 			RefactoringPair p = new RefactoringPair();
 			p.action = IJavaRefactorings.MOVE;
 			p.element = rootElement;
 			p.addition = dest;
+			p.resource = rootElement.getResource();
 			pairs = new RefactoringPair[] { p };
 		} else if (rootElement instanceof IType) {
 			IJavaElement[] elements = CodeImpUtils.getJElementTreeElements(
 					rootElement, sourceFile);
 			ArrayList<RefactoringPair> pairList = new ArrayList<RefactoringPair>();
 			for (IJavaElement e : elements) {
+				if (e instanceof IType) {
+					continue; // don't move class
+				}
 				if (!CodeImpUtils.isInProject(e, sourceFile.getProject())) {
 					continue;
 				}
-				if (e instanceof IMethod && ((IMethod) e).isMainMethod()) {
+				if (e instanceof IMethod) {
 					continue;
 				}
-				if (e == rootElement) {
-					continue; // don't move the class
+				if (CodeImpUtils.isStatic(e)) {
+					continue;
 				}
+
 				RefactoringPair pair = new RefactoringPair();
 				pair.action = IJavaRefactorings.MOVE;
 				pair.element = e;
 				pair.addition = dest;
+				pair.resource = rootElement.getResource();
 				pairList.add(pair);
 			}
 			pairs = new RefactoringPair[pairList.size()];
@@ -596,6 +623,7 @@ public class CodeImpRefactoringManager {
 					RefactoringPair pair = new RefactoringPair();
 					pair.action = IJavaRefactorings.EXTRACT_CLASS;
 					pair.element = f;
+					pair.resource = rootElement.getResource();
 					pairList.add(pair);
 				}
 				for (IMethod m : methods) {
@@ -605,6 +633,7 @@ public class CodeImpRefactoringManager {
 					RefactoringPair pair = new RefactoringPair();
 					pair.action = IJavaRefactorings.EXTRACT_CLASS;
 					pair.element = m;
+					pair.resource = rootElement.getResource();
 					pairList.add(pair);
 				}
 			} catch (JavaModelException e) {
@@ -617,63 +646,65 @@ public class CodeImpRefactoringManager {
 		return pairs;
 	}
 
-	/**
-	 * @param rootElement
-	 * @param sourceFile
-	 * @return
-	 * @throws JavaModelException
-	 */
-	private RefactoringPair[] getRenameLocalVariablePairs(
-			IJavaElement rootElement, IFile sourceFile)
-			throws JavaModelException {
-		if (rootElement instanceof IMethod) {
-			IJavaElement[] allElements = CodeImpUtils.identifyElements(
-					CodeImpUtils.getBody((IMethod) rootElement), sourceFile);
-			if (allElements == null || allElements.length == 0) {
-				return null;
-			}
-			ArrayList<RefactoringPair> pairList = new ArrayList<RefactoringPair>();
-			for (int i = 0; i < allElements.length; i++) {
-				if (allElements[i] instanceof ILocalVariable) {
-					RefactoringPair pair = new RefactoringPair();
-					pair.element = allElements[i];
-					pair.action = IJavaRefactorings.RENAME_LOCAL_VARIABLE;
-					pair.addition = "local" + i;
-					pairList.add(pair);
-				}
-			}
-			if (pairList.size() == 0) {
-				return null;
-			}
-			RefactoringPair[] pairs = new RefactoringPair[pairList.size()];
-			pairList.toArray(pairs);
-			return pairs;
-		}
-		return null;
-	}
-
-	/**
-	 * @param rootElement
-	 * @return
-	 * @throws JavaModelException
-	 */
-	private RefactoringPair[] getRenameFieldPairs(IJavaElement rootElement)
-			throws JavaModelException {
-		if (rootElement instanceof IType) {
-			IField[] fields = ((IType) rootElement).getFields();
-			RefactoringPair[] pairs = new RefactoringPair[fields.length];
-			for (int i = 0; i < fields.length; i++) {
-				RefactoringPair p = new RefactoringPair();
-				p.action = IJavaRefactorings.RENAME_FIELD;
-				p.element = fields[i];
-				p.addition = "field" + i;
-				pairs[i] = p;
-
-			}
-			return pairs;
-		}
-		return null;
-	}
+	// /**
+	// * @param rootElement
+	// * @param sourceFile
+	// * @return
+	// * @throws JavaModelException
+	// */
+	// private RefactoringPair[] getRenameLocalVariablePairs(
+	// IJavaElement rootElement, IFile sourceFile)
+	// throws JavaModelException {
+	// if (rootElement instanceof IMethod) {
+	// IJavaElement[] allElements = CodeImpUtils.identifyElements(
+	// CodeImpUtils.getBody((IMethod) rootElement), sourceFile);
+	// if (allElements == null || allElements.length == 0) {
+	// return null;
+	// }
+	// ArrayList<RefactoringPair> pairList = new ArrayList<RefactoringPair>();
+	// for (int i = 0; i < allElements.length; i++) {
+	// if (allElements[i] instanceof ILocalVariable) {
+	// RefactoringPair pair = new RefactoringPair();
+	// pair.element = allElements[i];
+	// pair.action = IJavaRefactorings.RENAME_LOCAL_VARIABLE;
+	// pair.addition = "local" + i;
+	// pair.resource = rootElement.getResource();
+	// pairList.add(pair);
+	// }
+	// }
+	// if (pairList.size() == 0) {
+	// return null;
+	// }
+	// RefactoringPair[] pairs = new RefactoringPair[pairList.size()];
+	// pairList.toArray(pairs);
+	// return pairs;
+	// }
+	// return null;
+	// }
+	//
+	// /**
+	// * @param rootElement
+	// * @return
+	// * @throws JavaModelException
+	// */
+	// private RefactoringPair[] getRenameFieldPairs(IJavaElement rootElement)
+	// throws JavaModelException {
+	// if (rootElement instanceof IType) {
+	// IField[] fields = ((IType) rootElement).getFields();
+	// RefactoringPair[] pairs = new RefactoringPair[fields.length];
+	// for (int i = 0; i < fields.length; i++) {
+	// RefactoringPair p = new RefactoringPair();
+	// p.action = IJavaRefactorings.RENAME_FIELD;
+	// p.element = fields[i];
+	// p.addition = "field" + i;
+	// p.resource = rootElement.getResource();
+	// pairs[i] = p;
+	//
+	// }
+	// return pairs;
+	// }
+	// return null;
+	// }
 
 	/**
 	 * Depend on the action user expected, the function creates a descriptor
@@ -697,7 +728,7 @@ public class CodeImpRefactoringManager {
 		RefactoringStatus status = new RefactoringStatus();
 		descriptor = (JavaRefactoringDescriptor) contribution
 				.createDescriptor();
-		descriptor.setProject(sourceFile.getProject().getName());
+		descriptor.setProject(pair.resource.getProject().getName());
 
 		// TODO Complete refactoring list
 		switch (pair.action) {
@@ -711,9 +742,10 @@ public class CodeImpRefactoringManager {
 		case IJavaRefactorings.RENAME_SOURCE_FOLDER:
 		case IJavaRefactorings.RENAME_TYPE:
 		case IJavaRefactorings.RENAME_TYPE_PARAMETER:
-			refactoring = createRenameJavaElementRefactoring(pair, descriptor,
-					status);
-			break;
+			// refactoring = createRenameJavaElementRefactoring(pair,
+			// descriptor,
+			// status);
+			// break;
 		case IJavaRefactorings.CHANGE_METHOD_SIGNATURE:
 			break;
 		case IJavaRefactorings.CONVERT_ANONYMOUS:
@@ -824,12 +856,12 @@ public class CodeImpRefactoringManager {
 			if (methods != null) {
 				for (IMethod m : methods) {
 					try {
-						// TODO prevent NullPointException error
-						if(CodeImpUtils.getBody(m).equals(CodeImpUtils.getBody(method))) {
+						if (CodeImpUtils.getBody(m).equals(
+								CodeImpUtils.getBody(method))) {
 							retMethods.add(m);
 						}
 					} catch (JavaModelException e) {
-						e.printStackTrace();
+						// e.printStackTrace();
 					}
 				}
 			}
@@ -936,17 +968,15 @@ public class CodeImpRefactoringManager {
 		moveDescriptor.setDestination((IJavaElement) pair.addition);
 		moveDescriptor.setUpdateReferences(true);
 		moveDescriptor.setUpdateQualifiedNames(true);
-		if (pair.element instanceof IMember) {
-			IMember[] members = { (IMember) pair.element };
+		if (pair.element instanceof IField) {
+			IField[] members = { (IField) pair.element };
 			moveDescriptor.setMoveMembers(members);
 		} else if (pair.element instanceof IPackageFragmentRoot) {
-			IPackageFragmentRoot[] roots = { (IPackageFragmentRoot) pair.element };
-			moveDescriptor.setMovePackageFragmentRoots(roots);
+			// Have not supported
 		} else if (pair.element instanceof IPackageFragment) {
-			IPackageFragment[] packages = { (IPackageFragment) pair.element };
-			moveDescriptor.setMovePackages(packages);
+			// Have not supported
 		} else if (pair.element instanceof IResource) {
-			// Do not support
+			// Have not supported
 		} else {
 			// Do nothing
 		}
@@ -956,11 +986,125 @@ public class CodeImpRefactoringManager {
 
 	private Refactoring createExtractMethodRefactoring(RefactoringPair pair,
 			JavaRefactoringDescriptor descriptor, RefactoringStatus status) {
-		Refactoring refactoring = new ExtractMethodRefactoring(
-				(ICompilationUnit) pair.addition,
-				((ITextSelection) pair.element).getOffset(),
-				((ITextSelection) pair.element).getLength());
+		ICompilationUnit cu = (ICompilationUnit) pair.addition;
+		String fileCode = null;
+		try {
+			fileCode = cu.getSource();
+		} catch (JavaModelException e1) {
+			e1.printStackTrace();
+			return null;
+		}
+		String str = (String) pair.element;
+//		System.out.println("Finding string: " + str + " in "
+//				+ cu.getResource().getName());
+		int index = fileCode.indexOf(str);
+		int length = str.length();
+		if (index < 0) {
+			System.out.println("Cannot find the string in the code");
+			return null;
+		}
+		TextFileDocumentProvider provider = new TextFileDocumentProvider();
+		try {
+			provider.connect(cu.getResource());
+		} catch (CoreException e) {
+			e.printStackTrace();
+			return null;
+		}
+
+		IDocument document = provider.getDocument(cu.getResource());
+		ITextSelection selection = new TextSelection(document, index, length);
+		selection = completeSelection(selection, cu, document);
+		ExtractMethodRefactoring refactoring = new ExtractMethodRefactoring(cu,
+				selection.getOffset(), selection.getLength());
+		refactoring.setMethodName("extract_" + System.currentTimeMillis());
+		refactoring.setReplaceDuplicates(true);
 		return refactoring;
+	}
+
+	private ITextSelection completeSelection(ITextSelection selection,
+			ITypeRoot typeRoot, IDocument doc) {
+		ISourceRange sourceRange;
+		try {
+			sourceRange = typeRoot.getSourceRange();
+			if (sourceRange == null || sourceRange.getLength() == 0) {
+				return null;
+			}
+		} catch (JavaModelException e) {
+			e.printStackTrace();
+			return null;
+		}
+		ISourceRange newRange = null;
+		try {
+			newRange = getNewSelectionRange(createSourceRange(selection),
+					typeRoot);
+		} catch (JavaModelException e) {
+			e.printStackTrace();
+			return null;
+		}
+		// Check if new selection differs from current selection
+		if (selection.getOffset() == newRange.getOffset()
+				&& selection.getLength() == newRange.getLength()) {
+			System.out.println("The same as input");
+			return selection;
+		}
+		return new TextSelection(doc, newRange.getOffset(),
+				newRange.getLength());
+	}
+
+	private ISourceRange getNewSelectionRange(ISourceRange oldSourceRange,
+			ITypeRoot typeRoot) throws JavaModelException {
+		CompilationUnit root = getAST(typeRoot);
+		if (root == null)
+			return oldSourceRange;
+		Selection selection = Selection.createFromStartLength(
+				oldSourceRange.getOffset(), oldSourceRange.getLength());
+		SelectionAnalyzer selAnalyzer = new SelectionAnalyzer(selection, true);
+		root.accept(selAnalyzer);
+		return internalGetNewSelectionRange(oldSourceRange, typeRoot,
+				selAnalyzer);
+	}
+
+	private ISourceRange internalGetNewSelectionRange(
+			ISourceRange oldSourceRange, ISourceReference sr,
+			SelectionAnalyzer selAnalyzer) throws JavaModelException {
+		ASTNode first = selAnalyzer.getFirstSelectedNode();
+		if (first == null || first.getParent() == null)
+			return getLastCoveringNodeRange(oldSourceRange, sr, selAnalyzer);
+
+		return getSelectedNodeSourceRange(sr, first.getParent());
+	}
+
+	private ISourceRange getLastCoveringNodeRange(ISourceRange oldSourceRange,
+			ISourceReference sr, SelectionAnalyzer selAnalyzer)
+			throws JavaModelException {
+		if (selAnalyzer.getLastCoveringNode() == null)
+			return oldSourceRange;
+		else
+			return getSelectedNodeSourceRange(sr,
+					selAnalyzer.getLastCoveringNode());
+	}
+
+	private ISourceRange getSelectedNodeSourceRange(ISourceReference sr,
+			ASTNode nodeToSelect) throws JavaModelException {
+		int offset = nodeToSelect.getStartPosition();
+		int end = Math.min(sr.getSourceRange().getLength(),
+				nodeToSelect.getStartPosition() + nodeToSelect.getLength() - 1);
+		return createSourceRange(offset, end);
+	}
+
+	private ISourceRange createSourceRange(int offset, int end) {
+		int length = end - offset + 1;
+		if (length == 0) // to allow 0-length selection
+			length = 1;
+		return new SourceRange(Math.max(0, offset), length);
+	}
+
+	private CompilationUnit getAST(ITypeRoot sr) {
+		return SharedASTProvider.getAST(sr, SharedASTProvider.WAIT_YES, null);
+	}
+
+	private ISourceRange createSourceRange(ITextSelection selection) {
+		return new SourceRange(selection.getOffset(), selection.getLength());
 	}
 
 	private Refactoring createExtractClassRefactoring(RefactoringPair pair,
@@ -990,30 +1134,31 @@ public class CodeImpRefactoringManager {
 		return new ExtractClassRefactoring(extractClassDescriptor);
 	}
 
-	/**
-	 * @param pair
-	 * @param descriptor
-	 * @param status
-	 * @return
-	 * @throws CoreException
-	 */
-	private Refactoring createRenameJavaElementRefactoring(
-			RefactoringPair pair, JavaRefactoringDescriptor descriptor,
-			RefactoringStatus status) throws CoreException {
-		RenameJavaElementDescriptor renameDescriptor = (RenameJavaElementDescriptor) descriptor;
-		renameDescriptor.setJavaElement((IJavaElement) pair.element);
-		renameDescriptor
-				.setNewName(pair.addition == null ? ((IJavaElement) pair.element)
-						.getElementName() + "NewName"
-						: (String) pair.addition);
-		renameDescriptor.setDeprecateDelegate(true);
-		renameDescriptor.setKeepOriginal(false);
-		renameDescriptor.setUpdateReferences(true);
-		renameDescriptor.setUpdateTextualOccurrences(true);
-		return renameDescriptor.createRefactoring(status);
-	}
+	// /**
+	// * @param pair
+	// * @param descriptor
+	// * @param status
+	// * @return
+	// * @throws CoreException
+	// */
+	// private Refactoring createRenameJavaElementRefactoring(
+	// RefactoringPair pair, JavaRefactoringDescriptor descriptor,
+	// RefactoringStatus status) throws CoreException {
+	// RenameJavaElementDescriptor renameDescriptor =
+	// (RenameJavaElementDescriptor) descriptor;
+	// renameDescriptor.setJavaElement((IJavaElement) pair.element);
+	// renameDescriptor
+	// .setNewName(pair.addition == null ? ((IJavaElement) pair.element)
+	// .getElementName() + "NewName"
+	// : (String) pair.addition);
+	// renameDescriptor.setDeprecateDelegate(true);
+	// renameDescriptor.setKeepOriginal(false);
+	// renameDescriptor.setUpdateReferences(true);
+	// renameDescriptor.setUpdateTextualOccurrences(true);
+	// return renameDescriptor.createRefactoring(status);
+	// }
 
-	public RefactoringWizard getWizard(RefactoringPair pair, IFile file)
+	public RefactoringWizard getWizard(RefactoringPair pair)
 			throws CoreException {
 		RefactoringWizard wizard = null;
 		Refactoring refactoring = null;
@@ -1047,7 +1192,7 @@ public class CodeImpRefactoringManager {
 					.createExtractClassDescriptor();
 			IType rootType = (IType) ((IJavaElement) pair.element).getParent();
 			descriptor.setType(rootType);
-			descriptor.setProject(file.getProject().getName());
+			descriptor.setProject(pair.resource.getProject().getName());
 			if (pair.element instanceof IField) {
 				ExtractClassDescriptor.Field[] fields = ExtractClassDescriptor
 						.getFields(rootType);
@@ -1068,7 +1213,7 @@ public class CodeImpRefactoringManager {
 		case IJavaRefactorings.EXTRACT_INTERFACE:
 		case IJavaRefactorings.EXTRACT_LOCAL_VARIABLE:
 		case IJavaRefactorings.EXTRACT_METHOD:
-			refactoring = getRefactoring(pair, file);
+			refactoring = getRefactoring(pair, (IFile) pair.resource);
 			wizard = new ExtractMethodWizard(
 					(ExtractMethodRefactoring) refactoring);
 			break;
@@ -1085,7 +1230,10 @@ public class CodeImpRefactoringManager {
 		case IJavaRefactorings.INTRODUCE_PARAMETER_OBJECT:
 			break;
 		case IJavaRefactorings.MOVE:
-			IResource[] resources = new IResource[] { file };
+			System.out.println("file: " + pair.resource.getName()
+					+ ", element: "
+					+ ((IJavaElement) pair.element).getElementName());
+			IResource[] resources = new IResource[] { pair.resource };
 			elements = new IJavaElement[] { (IJavaElement) pair.element };
 			IMovePolicy policy = ReorgPolicyFactory.createMovePolicy(resources,
 					elements);
@@ -1098,6 +1246,8 @@ public class CodeImpRefactoringManager {
 						.setCreateTargetQueries(new CreateTargetQueries(wizard));
 				((JavaMoveProcessor) processor)
 						.setReorgQueries(new ReorgQueries(wizard));
+			} else {
+				System.out.println("policy.canEnable() == false");
 			}
 			break;
 		case IJavaRefactorings.MOVE_METHOD:

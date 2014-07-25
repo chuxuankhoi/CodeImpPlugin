@@ -28,6 +28,7 @@ import codeimp.graders.LongMethod;
 import codeimp.graders.SharedMethods;
 import codeimp.graders.SharedMethodsInChildren;
 import codeimp.graders.TCC;
+import codeimp.graders.test.ScoresCollection;
 import codeimp.refactoring.CodeImpRefactoring;
 import codeimp.refactoring.CodeImpRefactoringManager;
 import codeimp.refactoring.RefactoringPair;
@@ -50,7 +51,7 @@ public class CodeImpHillClimbing extends CodeImpAbstract {
 	// TODO bad implementation, static cannot serve many instances at one time
 	// Problem: instance cannot be changed by another threads
 	private static HashMap<String, EffectiveRefactorings> effectiveRefactorings = new HashMap<String, CodeImpAbstract.EffectiveRefactorings>();
-
+	
 	public CodeImpHillClimbing(ITextSelection selectedCode, IFile file,
 			IWorkbenchWindow currentWindow) {
 		codeSelection = selectedCode;
@@ -70,8 +71,10 @@ public class CodeImpHillClimbing extends CodeImpAbstract {
 					printLog("runImprovement - Lack of information about the experiment.");
 					return;
 				}
+				effectiveRefactorings.clear();
 				int successfullRefactoring = 0;
 				int totalRefactoring = 0;
+				boolean reachOptimal = false;
 
 				startScore = calCurrentScore();
 				if (startScore <= 0) {
@@ -103,25 +106,35 @@ public class CodeImpHillClimbing extends CodeImpAbstract {
 					printLog("No item identified.");
 					return;
 				}
-				System.out.println("Refatored elements:");
-				for (int i = 0; i < rootElements.length; i++) {
-					System.out.println("\t" + rootElements[i].getElementName()
-							+ " - " + rootElements[i].getElementType());
-				}
+				// System.out.println("Refatored elements:");
+				// for (int i = 0; i < rootElements.length; i++) {
+				// System.out.println("\t" + rootElements[i].getElementName()
+				// + " - " + rootElements[i].getElementType());
+				// }
 
 				bar.setMaximum(actionList.length);
 
 				for (int i = 0; i < actionList.length; i++) {
+					if (isCancelled) {
+						finishAction(actionList[i], bar);
+						return;
+					}
+					reachOptimal = false;
 					curAction = i;
+//					System.out.print(actionList[i]);
 					oldScore = calCurrentScore();
 					EffectiveRefactorings savedRefactoring = new EffectiveRefactorings(
 							actionList[i]);
 					CodeImpHillClimbing.effectiveRefactorings.put(
 							actionList[i], savedRefactoring);
 					for (int j = 0; j < rootElements.length; j++) {
+						if (isCancelled) {
+							finishAction(actionList[i], bar);
+							return;
+						}
 						RefactoringPair[] pairs = refManager
 								.getRefactoringPairs(rootElements[j],
-										actionList[i], sourceFile);
+										actionList[i]);
 						if (pairs == null) {
 							continue;
 						}
@@ -141,15 +154,13 @@ public class CodeImpHillClimbing extends CodeImpAbstract {
 										+ ((IJavaElement) pairs[k].element)
 												.getElementName());
 							} else if (pairs[k].action == IJavaRefactorings.EXTRACT_METHOD) {
-								printLog("Trying "
-										+ actionList[i]
+								printLog("Trying " + actionList[i]
 										+ " with root "
 										+ rootElements[j].getElementName()
 										+ " pair of "
-										+ ((ITextSelection) (pairs[k].element))
-												.getText());
+										+ (String) pairs[k].element);
 							}
-							System.out.println("Old score: " + oldScore);
+							// System.out.println("Old score: " + oldScore);
 							CodeImpRefactoring refactoring = new CodeImpRefactoring(
 									pairs[k], sourceFile);
 							totalRefactoring++;
@@ -158,24 +169,26 @@ public class CodeImpHillClimbing extends CodeImpAbstract {
 								success = refactoring.process(undoMan,
 										new NullProgressMonitor());
 							} catch (Exception e) {
-								// Do nothing
+								continue;
 							}
-							try {
-								wait(500);
-							} catch (InterruptedException e) {
-							}
+//							try {
+//								Thread.sleep(500);
+//							} catch (InterruptedException e) {
+//							}
 							successfullRefactoring++;
 							try {
 								sourceFile.refreshLocal(IFile.DEPTH_INFINITE,
 										null);
 							} catch (CoreException e) {
 							}
+//							System.out.print(actionList[i]);
 							double curScore = calCurrentScore();
-							System.out.println("Current score: " + curScore);
+							// System.out.println("Current score: " + curScore);
 							if (curScore < oldScore) {
 								savedRefactoring.put(pairs[k],
 										(oldScore - curScore));
 								oldScore = curScore;
+								reachOptimal = true;
 								continue;
 							} else {
 								if (success) {
@@ -184,16 +197,17 @@ public class CodeImpHillClimbing extends CodeImpAbstract {
 										undoMan.performUndo(null, undoMonitor);
 									} catch (CoreException e) {
 									}
+//									try {
+//										Thread.sleep(500);
+//									} catch (InterruptedException e) {
+//									}
 								}
-//								if (curScore > oldScore) {
-//									printLog("Current score is greater than the old score");
-//									finishAction(actionList[i], bar);
-//									break;
-//								}
-								try {
-									wait(500);
-								} catch (InterruptedException e) {
+								if (curScore > oldScore && reachOptimal) {
+									printLog("Current score is greater than the old score");
+									finishAction(actionList[i], bar);
+									break;
 								}
+
 							}
 						}
 					}
@@ -204,6 +218,7 @@ public class CodeImpHillClimbing extends CodeImpAbstract {
 						+ calCurrentScore());
 				printLog("Successfull refactoring: " + successfullRefactoring
 						+ "/" + totalRefactoring);
+				ScoresCollection.exportCSV("scores_" + System.currentTimeMillis() + ".csv");
 			}
 
 		};
@@ -223,7 +238,8 @@ public class CodeImpHillClimbing extends CodeImpAbstract {
 		while (undoMan.anythingToUndo()) {
 			try {
 				undoMan.performUndo(null, null);
-			} catch (CoreException e) {
+				Thread.sleep(500);
+			} catch (CoreException | InterruptedException e) {
 			}
 		}
 		if (bar != null) {
@@ -235,33 +251,34 @@ public class CodeImpHillClimbing extends CodeImpAbstract {
 	 * Weight-sum approach
 	 */
 	protected double scoreElement(IJavaElement element) {
-		// TODO Select appropriate scoring function for element based on its
-		// type
+		ScoresCollection.initialize();
 		IGrader grader = null;
 		double score = 0;
 		if (element instanceof IType) {
 			if (CodeImpUtils.isInProject((IType) element,
 					sourceFile.getProject())) {
-				// TODO solve unexpected results of move, pull up and rename
-//				grader = new LCOM2((IType) element, sourceFile);
-//				score += grader == null ? 0 : grader.getScore();
-//				grader = new LCOM5((IType) element, sourceFile);
-//				System.out.println("LCOM5: " + grader.getScore());
-//				score += grader == null ? 0 : grader.getScore();
-				grader = new TCC((IType) element, sourceFile);
-//				System.out.println("TCC: " + grader.getScore());
+				// LCOM2 LCOM5 TCC InheritedRatio SharedMethodsInChildren
+				// SharedMethods EmptyClass
+				grader = new LCOM2((IType) element, sourceFile);
+				ScoresCollection.getList(0).add(grader.getScore());
 				score += grader == null ? 0 : grader.getScore();
-//				grader = new InheritedRatio((IType) element);
-//				System.out.println("InheritedRatio: " + grader.getScore());
-//				score += grader == null ? 0 : grader.getScore();
+				grader = new LCOM5((IType) element, sourceFile);
+				ScoresCollection.getList(1).add(grader.getScore());
+				score += grader == null ? 0 : grader.getScore();
+				grader = new TCC((IType) element, sourceFile);
+				ScoresCollection.getList(2).add(grader.getScore());
+				score += grader == null ? 0 : grader.getScore();
+				grader = new InheritedRatio((IType) element);
+				ScoresCollection.getList(3).add(grader.getScore());
+				score += grader == null ? 0 : grader.getScore();
 				grader = new SharedMethodsInChildren((IType) element);
-//				System.out.println("SharedMethodsInChildren: " + grader.getScore());
+				ScoresCollection.getList(4).add(grader.getScore());
 				score += grader == null ? 0 : grader.getScore();
 				grader = new SharedMethods((IType) element);
-//				System.out.println("SharedMethods: " + grader.getScore());
+				ScoresCollection.getList(5).add(grader.getScore());
 				score += grader == null ? 0 : grader.getScore();
 				grader = new EmptyClass((IType) element);
-//				System.out.println("EmptyClass: " + grader.getScore());
+				ScoresCollection.getList(6).add(grader.getScore());
 				score += grader == null ? 0 : grader.getScore();
 			}
 		} else if (element instanceof IMethod) {

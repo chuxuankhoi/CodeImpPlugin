@@ -45,7 +45,6 @@ public class CodeImpWizard extends Wizard {
 		if (pairs == null || pairs.length == 0) {
 			return true;
 		}
-		// TODO Call standard refactorings for the pairs
 		CodeImpRefactoringManager refMan = CodeImpRefactoringManager
 				.getManager();
 		for (RefactoringPair pair : pairs) {
@@ -67,52 +66,60 @@ public class CodeImpWizard extends Wizard {
 						support.openDialog(getShell());
 				} catch (CoreException e) {
 					e.printStackTrace();
-				}	
+				}
 			} else {
 				RefactoringWizard wizard;
 				try {
-					wizard = refMan.getWizard(pair, file);
-					new RefactoringStarter()
-					.activate(
-							wizard,
-							getShell(),
-							RefactoringMessages.OpenRefactoringWizardAction_refactoring,
-							RefactoringSaveHelper.SAVE_REFACTORING);
+					wizard = refMan.getWizard(pair);
+					if (wizard != null) {
+						new RefactoringStarter()
+								.activate(
+										wizard,
+										getShell(),
+										RefactoringMessages.OpenRefactoringWizardAction_refactoring,
+										RefactoringSaveHelper.SAVE_REFACTORING);
+					}
 				} catch (CoreException e) {
 					e.printStackTrace();
-				}				
+				}
 			}
 		}
 		return true;
 	}
 
-	private RenameSupport createRenameSupport(IJavaElement element, String newName,
-			int flags) throws CoreException {
+	private RenameSupport createRenameSupport(IJavaElement element,
+			String newName, int flags) throws CoreException {
 		switch (element.getElementType()) {
 		case IJavaElement.JAVA_PROJECT:
 			return RenameSupport.create((IJavaProject) element, newName, flags);
 		case IJavaElement.PACKAGE_FRAGMENT_ROOT:
-			return RenameSupport.create((IPackageFragmentRoot) element, newName);
+			return RenameSupport
+					.create((IPackageFragmentRoot) element, newName);
 		case IJavaElement.PACKAGE_FRAGMENT:
-			return RenameSupport.create((IPackageFragment) element, newName, flags);
+			return RenameSupport.create((IPackageFragment) element, newName,
+					flags);
 		case IJavaElement.COMPILATION_UNIT:
-			return RenameSupport.create((ICompilationUnit) element, newName, flags);
+			return RenameSupport.create((ICompilationUnit) element, newName,
+					flags);
 		case IJavaElement.TYPE:
 			return RenameSupport.create((IType) element, newName, flags);
 		case IJavaElement.METHOD:
-			final IMethod method= (IMethod) element;
+			final IMethod method = (IMethod) element;
 			if (method.isConstructor())
-				return createRenameSupport(method.getDeclaringType(), newName, flags);
+				return createRenameSupport(method.getDeclaringType(), newName,
+						flags);
 			else
 				return RenameSupport.create((IMethod) element, newName, flags);
 		case IJavaElement.FIELD:
 			return RenameSupport.create((IField) element, newName, flags);
 		case IJavaElement.TYPE_PARAMETER:
-			return RenameSupport.create((ITypeParameter) element, newName, flags);
+			return RenameSupport.create((ITypeParameter) element, newName,
+					flags);
 		case IJavaElement.LOCAL_VARIABLE:
-			return RenameSupport.create((ILocalVariable) element, newName, flags);
-	}
-	return null;
+			return RenameSupport.create((ILocalVariable) element, newName,
+					flags);
+		}
+		return null;
 	}
 
 	public CodeImpWizard(ITextSelection textSelection, IFile curEditorFile,

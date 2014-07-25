@@ -61,6 +61,9 @@ public class InheritedRatio implements IGrader {
 			curMethods = type.getMethods();
 		} catch (JavaModelException e) {
 		}
+		if(curMethods == null) {
+			return 0;
+		}
 		for (IMethod m : curMethods) {
 			if (!isUsedMethod(m, avaiMethods)) {
 				avaiMethods.add(m);
@@ -113,7 +116,7 @@ public class InheritedRatio implements IGrader {
 		if (iMethodsNum == 0) {
 			return Double.MAX_VALUE;
 		} else {
-			return f((double) aMethodsNum / (double) iMethodsNum);
+			return f((double) aMethodsNum / (double) iMethodsNum) / 5;
 		}
 	}
 
