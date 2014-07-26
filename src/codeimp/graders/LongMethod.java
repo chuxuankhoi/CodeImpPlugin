@@ -32,7 +32,6 @@ public class LongMethod implements IGrader {
 	 */
 	@Override
 	public double getScore() {
-		// TODO Implement long method scoring
 		String body;
 		try {
 			body = CodeImpUtils.getBody(method);

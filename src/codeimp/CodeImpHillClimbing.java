@@ -43,22 +43,26 @@ import codeimp.wizards.CodeImpProgressBar;
  */
 public class CodeImpHillClimbing extends CodeImpAbstract {
 
+	private class SharedClass {
+		private HashMap<String, EffectiveRefactorings> effectiveRefactorings = null;
+	}
+
 	private Map<String, Double> results = new HashMap<String, Double>();
 	private double startScore = 0;
 	private CancellableThread thread = null;
 	private int curAction = 0;
 	private CodeImpRefactoringManager refManager = null;
-	// TODO bad implementation, static cannot serve many instances at one time
-	// Problem: instance cannot be changed by another threads
-	private static HashMap<String, EffectiveRefactorings> effectiveRefactorings = new HashMap<String, CodeImpAbstract.EffectiveRefactorings>();
-	
+	protected final SharedClass sharedData = new SharedClass();
+
 	public CodeImpHillClimbing(ITextSelection selectedCode, IFile file,
 			IWorkbenchWindow currentWindow) {
 		codeSelection = selectedCode;
 		sourceFile = file;
 		window = currentWindow;
 		refManager = CodeImpRefactoringManager.getManager();
-		effectiveRefactorings = new HashMap<String, CodeImpAbstract.EffectiveRefactorings>();
+		if (sharedData.effectiveRefactorings == null) {
+			sharedData.effectiveRefactorings = new HashMap<String, CodeImpAbstract.EffectiveRefactorings>();
+		}
 	}
 
 	@Override
@@ -71,7 +75,7 @@ public class CodeImpHillClimbing extends CodeImpAbstract {
 					printLog("runImprovement - Lack of information about the experiment.");
 					return;
 				}
-				effectiveRefactorings.clear();
+				sharedData.effectiveRefactorings.clear();
 				int successfullRefactoring = 0;
 				int totalRefactoring = 0;
 				boolean reachOptimal = false;
@@ -106,14 +110,8 @@ public class CodeImpHillClimbing extends CodeImpAbstract {
 					printLog("No item identified.");
 					return;
 				}
-				// System.out.println("Refatored elements:");
-				// for (int i = 0; i < rootElements.length; i++) {
-				// System.out.println("\t" + rootElements[i].getElementName()
-				// + " - " + rootElements[i].getElementType());
-				// }
 
 				bar.setMaximum(actionList.length);
-
 				for (int i = 0; i < actionList.length; i++) {
 					if (isCancelled) {
 						finishAction(actionList[i], bar);
@@ -121,11 +119,10 @@ public class CodeImpHillClimbing extends CodeImpAbstract {
 					}
 					reachOptimal = false;
 					curAction = i;
-//					System.out.print(actionList[i]);
 					oldScore = calCurrentScore();
 					EffectiveRefactorings savedRefactoring = new EffectiveRefactorings(
 							actionList[i]);
-					CodeImpHillClimbing.effectiveRefactorings.put(
+					sharedData.effectiveRefactorings.put(
 							actionList[i], savedRefactoring);
 					for (int j = 0; j < rootElements.length; j++) {
 						if (isCancelled) {
@@ -138,7 +135,7 @@ public class CodeImpHillClimbing extends CodeImpAbstract {
 						if (pairs == null) {
 							continue;
 						}
-//						CodeImpUtils.shuffleArray(pairs);
+						// CodeImpUtils.shuffleArray(pairs);
 						printLog("Pairs number: " + pairs.length);
 						for (int k = 0; k < pairs.length; k++) {
 							if (isCancelled) {
@@ -160,7 +157,6 @@ public class CodeImpHillClimbing extends CodeImpAbstract {
 										+ " pair of "
 										+ (String) pairs[k].element);
 							}
-							// System.out.println("Old score: " + oldScore);
 							CodeImpRefactoring refactoring = new CodeImpRefactoring(
 									pairs[k], sourceFile);
 							totalRefactoring++;
@@ -171,19 +167,13 @@ public class CodeImpHillClimbing extends CodeImpAbstract {
 							} catch (Exception e) {
 								continue;
 							}
-//							try {
-//								Thread.sleep(500);
-//							} catch (InterruptedException e) {
-//							}
 							successfullRefactoring++;
 							try {
 								sourceFile.refreshLocal(IFile.DEPTH_INFINITE,
 										null);
 							} catch (CoreException e) {
 							}
-//							System.out.print(actionList[i]);
 							double curScore = calCurrentScore();
-							// System.out.println("Current score: " + curScore);
 							if (curScore < oldScore) {
 								savedRefactoring.put(pairs[k],
 										(oldScore - curScore));
@@ -197,10 +187,6 @@ public class CodeImpHillClimbing extends CodeImpAbstract {
 										undoMan.performUndo(null, undoMonitor);
 									} catch (CoreException e) {
 									}
-//									try {
-//										Thread.sleep(500);
-//									} catch (InterruptedException e) {
-//									}
 								}
 								if (curScore > oldScore && reachOptimal) {
 									printLog("Current score is greater than the old score");
@@ -218,7 +204,8 @@ public class CodeImpHillClimbing extends CodeImpAbstract {
 						+ calCurrentScore());
 				printLog("Successfull refactoring: " + successfullRefactoring
 						+ "/" + totalRefactoring);
-				ScoresCollection.exportCSV("scores_" + System.currentTimeMillis() + ".csv");
+				ScoresCollection.exportCSV("scores_"
+						+ System.currentTimeMillis() + ".csv");
 			}
 
 		};
@@ -257,8 +244,7 @@ public class CodeImpHillClimbing extends CodeImpAbstract {
 		if (element instanceof IType) {
 			if (CodeImpUtils.isInProject((IType) element,
 					sourceFile.getProject())) {
-				// LCOM2 LCOM5 TCC InheritedRatio SharedMethodsInChildren
-				// SharedMethods EmptyClass
+				// TODO Assign the factors for each score
 				grader = new LCOM2((IType) element, sourceFile);
 				ScoresCollection.getList(0).add(grader.getScore());
 				score += grader == null ? 0 : grader.getScore();
@@ -324,8 +310,9 @@ public class CodeImpHillClimbing extends CodeImpAbstract {
 	}
 
 	public HashMap<String, Double> getEffectiveList(String action) {
-		if (effectiveRefactorings != null) {
-			EffectiveRefactorings refactorings = effectiveRefactorings
+		if (sharedData.effectiveRefactorings != null) {
+			System.out.println("actions number: " + sharedData.effectiveRefactorings.size());
+			EffectiveRefactorings refactorings = sharedData.effectiveRefactorings
 					.get(action);
 			if (refactorings == null) {
 				return null;
@@ -338,8 +325,8 @@ public class CodeImpHillClimbing extends CodeImpAbstract {
 
 	@Override
 	public RefactoringPair[] getEffectivePairs(String action) {
-		if (effectiveRefactorings != null) {
-			EffectiveRefactorings refactorings = effectiveRefactorings
+		if (sharedData.effectiveRefactorings != null) {
+			EffectiveRefactorings refactorings = sharedData.effectiveRefactorings
 					.get(action);
 			if (refactorings == null) {
 				return null;

@@ -114,6 +114,7 @@ public class CodeImpRefactoringManager {
 
 	private void initialize() {
 		actionsList = new ArrayList<String>();
+		// TODO Collect all refactoring actions Eclipse supports
 		Field[] fields = IJavaRefactorings.class.getDeclaredFields();
 		for (int i = 0; i < fields.length; i++) {
 			if (Modifier.isStatic(fields[i].getModifiers())) {
@@ -160,7 +161,6 @@ public class CodeImpRefactoringManager {
 	public RefactoringPair[] getRefactoringPairs(IJavaElement rootElement,
 			String action) {
 		RefactoringPair[] pairs = null;
-		// TODO Get available pairs for the action in the rootElement
 		try {
 			switch (action) {
 			case IJavaRefactorings.RENAME_FIELD:
@@ -730,7 +730,6 @@ public class CodeImpRefactoringManager {
 				.createDescriptor();
 		descriptor.setProject(pair.resource.getProject().getName());
 
-		// TODO Complete refactoring list
 		switch (pair.action) {
 		case IJavaRefactorings.RENAME_FIELD:
 		case IJavaRefactorings.RENAME_LOCAL_VARIABLE:

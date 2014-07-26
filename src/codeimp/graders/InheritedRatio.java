@@ -112,7 +112,6 @@ public class InheritedRatio implements IGrader {
 
 		aMethodsNum = avaiMethods.size();
 
-		// TODO normalize the score
 		if (iMethodsNum == 0) {
 			return Double.MAX_VALUE;
 		} else {
