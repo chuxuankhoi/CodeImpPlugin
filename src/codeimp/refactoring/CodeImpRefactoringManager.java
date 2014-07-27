@@ -3,8 +3,6 @@
  */
 package codeimp.refactoring;
 
-import java.lang.reflect.Field;
-import java.lang.reflect.Modifier;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashSet;
@@ -15,12 +13,13 @@ import java.util.Set;
 import org.eclipse.core.resources.IFile;
 import org.eclipse.core.resources.IResource;
 import org.eclipse.core.runtime.CoreException;
+import org.eclipse.core.runtime.IConfigurationElement;
 import org.eclipse.core.runtime.NullProgressMonitor;
+import org.eclipse.core.runtime.Platform;
 import org.eclipse.jdt.core.ICompilationUnit;
 import org.eclipse.jdt.core.IField;
 import org.eclipse.jdt.core.IJavaElement;
 import org.eclipse.jdt.core.IJavaProject;
-//import org.eclipse.jdt.core.ILocalVariable;
 import org.eclipse.jdt.core.IMember;
 import org.eclipse.jdt.core.IMethod;
 import org.eclipse.jdt.core.IPackageFragment;
@@ -45,7 +44,6 @@ import org.eclipse.jdt.core.refactoring.IJavaRefactorings;
 import org.eclipse.jdt.core.refactoring.descriptors.ExtractClassDescriptor;
 import org.eclipse.jdt.core.refactoring.descriptors.JavaRefactoringDescriptor;
 import org.eclipse.jdt.core.refactoring.descriptors.MoveDescriptor;
-//import org.eclipse.jdt.core.refactoring.descriptors.RenameJavaElementDescriptor;
 import org.eclipse.jdt.internal.core.refactoring.descriptors.RefactoringSignatureDescriptorFactory;
 import org.eclipse.jdt.internal.corext.dom.Selection;
 import org.eclipse.jdt.internal.corext.dom.SelectionAnalyzer;
@@ -84,6 +82,9 @@ import org.eclipse.ltk.core.refactoring.participants.MoveProcessor;
 import org.eclipse.ltk.core.refactoring.participants.MoveRefactoring;
 import org.eclipse.ltk.core.refactoring.participants.ProcessorBasedRefactoring;
 import org.eclipse.ltk.core.refactoring.participants.RefactoringProcessor;
+import org.eclipse.ltk.internal.core.refactoring.Messages;
+import org.eclipse.ltk.internal.core.refactoring.RefactoringCoreMessages;
+import org.eclipse.ltk.internal.core.refactoring.RefactoringCorePlugin;
 import org.eclipse.ltk.ui.refactoring.RefactoringWizard;
 import org.eclipse.ui.editors.text.TextFileDocumentProvider;
 
@@ -95,6 +96,15 @@ import codeimp.CodeImpUtils;
  */
 @SuppressWarnings("restriction")
 public class CodeImpRefactoringManager {
+	
+	/** The class attribute */
+	private static final String ATTRIBUTE_CLASS= "class"; //$NON-NLS-1$
+
+	/** The id attribute */
+	private static final String ATTRIBUTE_ID= "id"; //$NON-NLS-1$
+
+	/** The refactoring contributions extension point */
+	private static final String REFACTORING_CONTRIBUTIONS_EXTENSION_POINT= "refactoringContributions"; //$NON-NLS-1$
 
 	private static CodeImpRefactoringManager manager = null;
 	private static IType tmpClass = null;
@@ -114,24 +124,55 @@ public class CodeImpRefactoringManager {
 
 	private void initialize() {
 		actionsList = new ArrayList<String>();
-		// TODO Collect all refactoring actions Eclipse supports
-		Field[] fields = IJavaRefactorings.class.getDeclaredFields();
-		for (int i = 0; i < fields.length; i++) {
-			if (Modifier.isStatic(fields[i].getModifiers())) {
-				try {
-					actionsList.add((String) fields[i].get(null));
-				} catch (IllegalArgumentException | IllegalAccessException e) {
-					continue;
-				}
-			}
-		}
-//		actionsList.add(IJavaRefactorings.EXTRACT_METHOD);
+		// Collect all refactoring actions Eclipse supports
+		getActionList(actionsList);
+		// actionsList.add(IJavaRefactorings.EXTRACT_METHOD);
 
 	}
 
+	private void getActionList(ArrayList<String> out) {
+		final IConfigurationElement[] elements = Platform
+				.getExtensionRegistry().getConfigurationElementsFor(
+						RefactoringCore.ID_PLUGIN,
+						REFACTORING_CONTRIBUTIONS_EXTENSION_POINT);
+		for (int index = 0; index < elements.length; index++) {
+			final IConfigurationElement element = elements[index];
+			final String attributeId = element.getAttribute(ATTRIBUTE_ID);
+			final String point = RefactoringCore.ID_PLUGIN
+					+ "." + REFACTORING_CONTRIBUTIONS_EXTENSION_POINT; //$NON-NLS-1$
+			if (attributeId != null && !"".equals(attributeId)) { //$NON-NLS-1$
+				final String className = element.getAttribute(ATTRIBUTE_CLASS);
+				if (className != null && !"".equals(className)) { //$NON-NLS-1$
+					try {
+						final Object implementation = element
+								.createExecutableExtension(ATTRIBUTE_CLASS);
+						if (implementation instanceof RefactoringContribution) {
+							out.add(attributeId);
+						} else
+							RefactoringCorePlugin
+									.logErrorMessage(Messages
+											.format(RefactoringCoreMessages.RefactoringCorePlugin_creation_error,
+													new String[] { point,
+															attributeId }));
+					} catch (CoreException exception) {
+						RefactoringCorePlugin.log(exception);
+					}
+				} else
+					RefactoringCorePlugin
+							.logErrorMessage(Messages
+									.format(RefactoringCoreMessages.RefactoringCorePlugin_missing_class_attribute,
+											new String[] { point, attributeId,
+													ATTRIBUTE_CLASS }));
+			} else
+				RefactoringCorePlugin
+						.logErrorMessage(Messages
+								.format(RefactoringCoreMessages.RefactoringCorePlugin_missing_attribute,
+										new String[] { point, ATTRIBUTE_ID }));
+		}
+	}
+
 	/**
-	 * Get all refactoring actions supported by scanning
-	 * {@link IJavaRefactorings} to find all static fields' value
+	 * Get all refactoring actions name
 	 * 
 	 * @return
 	 */
@@ -148,6 +189,8 @@ public class CodeImpRefactoringManager {
 	/**
 	 * Look for the objects that the given refactoring action can be applied to
 	 * Support: Eclipse 3.8.1 refactoring actions
+	 * 
+	 * TODO automate the Refactoring generation
 	 * 
 	 * @param rootElement
 	 *            scope to look for the objects
@@ -994,8 +1037,8 @@ public class CodeImpRefactoringManager {
 			return null;
 		}
 		String str = (String) pair.element;
-//		System.out.println("Finding string: " + str + " in "
-//				+ cu.getResource().getName());
+		// System.out.println("Finding string: " + str + " in "
+		// + cu.getResource().getName());
 		int index = fileCode.indexOf(str);
 		int length = str.length();
 		if (index < 0) {

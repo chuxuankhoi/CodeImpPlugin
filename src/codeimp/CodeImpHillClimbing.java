@@ -65,6 +65,9 @@ public class CodeImpHillClimbing extends CodeImpAbstract {
 		}
 	}
 
+	/**
+	 * @see CodeImpAbstract
+	 */
 	@Override
 	public synchronized void runImprovement(CodeImpProgressBar bar) {
 		thread = new CancellableThread(bar) {
@@ -76,9 +79,11 @@ public class CodeImpHillClimbing extends CodeImpAbstract {
 					return;
 				}
 				sharedData.effectiveRefactorings.clear();
-				int successfullRefactoring = 0;
-				int totalRefactoring = 0;
-				boolean reachOptimal = false;
+				int successfullRefactoring = 0; // for reporting
+				int totalRefactoring = 0; // for reporting
+				boolean reachOptimal = false; // avoid cases that the score is
+												// increased before reaching the
+												// optimal
 
 				startScore = calCurrentScore();
 				if (startScore <= 0) {
@@ -111,6 +116,7 @@ public class CodeImpHillClimbing extends CodeImpAbstract {
 					return;
 				}
 
+				// Start hill-climbing analysis
 				bar.setMaximum(actionList.length);
 				for (int i = 0; i < actionList.length; i++) {
 					if (isCancelled) {
@@ -122,8 +128,8 @@ public class CodeImpHillClimbing extends CodeImpAbstract {
 					oldScore = calCurrentScore();
 					EffectiveRefactorings savedRefactoring = new EffectiveRefactorings(
 							actionList[i]);
-					sharedData.effectiveRefactorings.put(
-							actionList[i], savedRefactoring);
+					sharedData.effectiveRefactorings.put(actionList[i],
+							savedRefactoring);
 					for (int j = 0; j < rootElements.length; j++) {
 						if (isCancelled) {
 							finishAction(actionList[i], bar);
@@ -235,6 +241,7 @@ public class CodeImpHillClimbing extends CodeImpAbstract {
 	}
 
 	/**
+	 * @see CodeImpAbstract
 	 * Weight-sum approach
 	 */
 	protected double scoreElement(IJavaElement element) {
@@ -244,7 +251,6 @@ public class CodeImpHillClimbing extends CodeImpAbstract {
 		if (element instanceof IType) {
 			if (CodeImpUtils.isInProject((IType) element,
 					sourceFile.getProject())) {
-				// TODO Assign the factors for each score
 				grader = new LCOM2((IType) element, sourceFile);
 				ScoresCollection.getList(0).add(grader.getScore());
 				score += grader == null ? 0 : grader.getScore();
@@ -255,8 +261,8 @@ public class CodeImpHillClimbing extends CodeImpAbstract {
 				ScoresCollection.getList(2).add(grader.getScore());
 				score += grader == null ? 0 : grader.getScore();
 				grader = new InheritedRatio((IType) element);
-				ScoresCollection.getList(3).add(grader.getScore());
-				score += grader == null ? 0 : grader.getScore();
+				ScoresCollection.getList(3).add(grader.getScore() * 0.5);
+				score += grader == null ? 0 : (0.5 * grader.getScore());
 				grader = new SharedMethodsInChildren((IType) element);
 				ScoresCollection.getList(4).add(grader.getScore());
 				score += grader == null ? 0 : grader.getScore();
@@ -297,11 +303,17 @@ public class CodeImpHillClimbing extends CodeImpAbstract {
 		return ret;
 	}
 
+	/**
+	 * @see CodeImpAbstract
+	 */
 	@Override
 	public Map<String, Double> getResults() {
 		return results;
 	}
 
+	/**
+	 * @see CodeImpAbstract
+	 */
 	@Override
 	public void cancel() {
 		if (thread != null && thread.isAlive()) {
@@ -309,9 +321,14 @@ public class CodeImpHillClimbing extends CodeImpAbstract {
 		}
 	}
 
+	/**
+	 * @see CodeImpAbstract
+	 */
+	@Override
 	public HashMap<String, Double> getEffectiveList(String action) {
 		if (sharedData.effectiveRefactorings != null) {
-			System.out.println("actions number: " + sharedData.effectiveRefactorings.size());
+			System.out.println("actions number: "
+					+ sharedData.effectiveRefactorings.size());
 			EffectiveRefactorings refactorings = sharedData.effectiveRefactorings
 					.get(action);
 			if (refactorings == null) {
@@ -323,6 +340,9 @@ public class CodeImpHillClimbing extends CodeImpAbstract {
 		}
 	}
 
+	/**
+	 * @see CodeImpAbstract
+	 */
 	@Override
 	public RefactoringPair[] getEffectivePairs(String action) {
 		if (sharedData.effectiveRefactorings != null) {

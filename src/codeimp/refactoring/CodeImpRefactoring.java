@@ -73,6 +73,7 @@ public class CodeImpRefactoring {
 		CodeImpRefactoringManager refactoringManager = CodeImpRefactoringManager
 				.getManager();
 
+		// Get Refactoring instance for the item
 		Refactoring refactoring = null;
 		try {
 			refactoring = refactoringManager.getRefactoring(pair,
@@ -86,6 +87,8 @@ public class CodeImpRefactoring {
 			return false;
 		}
 		monitor.worked(1);
+		
+		// Check the availability of the refactoring		
 		RefactoringStatus status = new RefactoringStatus();
 		try {
 			status = refactoring.checkInitialConditions(monitor);
@@ -115,6 +118,7 @@ public class CodeImpRefactoring {
 			throw new OperationCanceledException();
 		}
 		monitor.worked(3);
+		// Create appropriate changes in the refactoring
 		Change change;
 		try {
 			change = refactoring.createChange(monitor);
@@ -122,7 +126,8 @@ public class CodeImpRefactoring {
 			e.printStackTrace();
 			return false;
 		}
-		monitor.worked(4);
+		monitor.worked(4);		
+		// Start actions of the refactoring
 		undoMan.aboutToPerformChange(change);
 		Change fUndoChange;
 		try {
@@ -131,7 +136,8 @@ public class CodeImpRefactoring {
 			e.printStackTrace();
 			return false;
 		}
-		monitor.worked(5);
+		monitor.worked(5);		
+		// Add the changes to the undo manager to record
 		change.dispose();
 		if (fUndoChange != null) {
 			undoMan.changePerformed(change, true);

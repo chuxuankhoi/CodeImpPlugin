@@ -421,6 +421,12 @@ public final class CodeImpUtils {
 			System.out.println("Item " + i + ": " + array[i].getElementName());
 		}
 	}
+	
+	public static void printStringArrayList(ArrayList<String> input) {
+		for(String str:input) {
+			System.out.println(str);
+		}
+	}
 
 	public static void shuffleArray(Object[] input) {
 		Random rnd = new Random();

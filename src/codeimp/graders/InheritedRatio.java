@@ -115,7 +115,7 @@ public class InheritedRatio implements IGrader {
 		if (iMethodsNum == 0) {
 			return Double.MAX_VALUE;
 		} else {
-			return f((double) aMethodsNum / (double) iMethodsNum) / 5;
+			return f((double) aMethodsNum / (double) iMethodsNum);
 		}
 	}
 

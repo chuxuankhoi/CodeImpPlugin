@@ -18,8 +18,14 @@ import codeimp.wizards.CodeImpProgressBar;
 public abstract class CodeImpAbstract {
 
 	protected abstract class CancellableThread extends Thread {
-		protected CodeImpProgressBar bar = null;
-		protected boolean isCancelled = false;
+		protected CodeImpProgressBar bar = null; // major progress bar to
+													// reflect the progress of
+													// running
+		protected boolean isCancelled = false; // determine that the thread is
+												// cancelled or not. If the
+												// thread is cancelled, the
+												// function run() should be stop
+												// immediately
 
 		CancellableThread(CodeImpProgressBar progressBar) {
 			bar = progressBar;
@@ -60,7 +66,11 @@ public abstract class CodeImpAbstract {
 		}
 
 		/**
+		 * Constructor, which initializes the private fields
+		 * 
 		 * @param action
+		 *            string indicating the refactoring action applied to the
+		 *            items to achieve the improvement
 		 */
 		public EffectiveRefactorings(String action) {
 			super();
@@ -69,11 +79,28 @@ public abstract class CodeImpAbstract {
 			improvementScore = new ArrayList<Double>();
 		}
 
+		/**
+		 * Add new refactoring item and its improvement score to the last
+		 * position
+		 * 
+		 * @param pair
+		 *            RefactoringPair which stores the information about the
+		 *            refactoring {@link RefactoringPair}
+		 * @param score
+		 *            double number indicating the improvement if the
+		 *            refactoring action is applied to the item
+		 */
 		public void put(RefactoringPair pair, double score) {
 			effectivePairs.add(pair);
 			improvementScore.add(score);
 		}
 
+		/**
+		 * Return a map that summarized the item and its corresponding
+		 * improvement
+		 * 
+		 * @return
+		 */
 		public HashMap<String, Double> getRefactoringMap() {
 			HashMap<String, Double> map = new HashMap<String, Double>();
 
@@ -89,13 +116,18 @@ public abstract class CodeImpAbstract {
 
 			return map;
 		}
-		
+
 		public int size() {
 			return effectivePairs.size();
 		}
-		
+
+		/**
+		 * Return all refactoring pairs that make improvement
+		 * 
+		 * @return
+		 */
 		public RefactoringPair[] getRefactoringPairs() {
-			if(effectivePairs.size() == 0) {
+			if (effectivePairs.size() == 0) {
 				return null;
 			}
 			RefactoringPair[] pairs = new RefactoringPair[effectivePairs.size()];
@@ -105,10 +137,13 @@ public abstract class CodeImpAbstract {
 
 	}
 
-	protected IWorkbenchWindow window;
-	protected ITextSelection codeSelection;
-	protected IFile sourceFile;
-	protected IUndoManager undoMan = null;
+	protected IWorkbenchWindow window; // current workbench window
+	protected ITextSelection codeSelection; // the code selected which we will
+											// try to improve the items in it.
+	protected IFile sourceFile; // the opened file which contains the selected
+								// code
+	protected IUndoManager undoMan = null; // the manager managing undo, redo
+											// and history of the refactoring
 
 	public CodeImpAbstract() {
 		super();
@@ -118,6 +153,11 @@ public abstract class CodeImpAbstract {
 		CodeImpUtils.printLog(this.getClass().getName() + " - " + log);
 	}
 
+	/**
+	 * Calculate overall score of the selected code in the current circumstance
+	 * 
+	 * @return
+	 */
 	public double calCurrentScore() {
 		if (codeSelection == null || sourceFile == null) {
 			printLog("calCurrentScore - Lack of information about the experiment.");
@@ -128,7 +168,7 @@ public abstract class CodeImpAbstract {
 			elements = CodeImpUtils.identifyElements(codeSelection.getText(),
 					sourceFile);
 		} catch (JavaModelException e) {
-//			e.printStackTrace();
+			// e.printStackTrace();
 		}
 		if (elements == null) {
 			printLog("calCurrentScore - No element found by identifier.");
@@ -142,8 +182,19 @@ public abstract class CodeImpAbstract {
 		return score;
 	}
 
+	/**
+	 * Calculate the score of a Java element in the current circumstance
+	 * 
+	 * @param element
+	 * @return
+	 */
 	protected abstract double scoreElement(IJavaElement element);
 
+	/**
+	 * Return a string that lists all actions that improve the code quality
+	 * 
+	 * @return
+	 */
 	public String getRefactoringHistory() {
 		if (undoMan != null) {
 			return ((CodeImpUndoManager) undoMan).getCurrentUndoListString();
@@ -151,6 +202,9 @@ public abstract class CodeImpAbstract {
 		return "";
 	}
 
+	/**
+	 * Function which is expected to stop the improvement action immediately
+	 */
 	public abstract void cancel();
 
 	/**
@@ -175,8 +229,22 @@ public abstract class CodeImpAbstract {
 	 */
 	public abstract void runImprovement(CodeImpProgressBar progressBar);
 
+	/**
+	 * Return a map that contains all refactoring items which helps us improving
+	 * the code quality when we apply the action on them and their effectiveness
+	 * 
+	 * @param action
+	 * @return
+	 */
 	public abstract HashMap<String, Double> getEffectiveList(String action);
-	
+
+	/**
+	 * Get a list of items that helps us improving the code quality when we
+	 * apply the action on them
+	 * 
+	 * @param action
+	 * @return
+	 */
 	public abstract RefactoringPair[] getEffectivePairs(String action);
 
 }
