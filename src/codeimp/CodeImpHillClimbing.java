@@ -327,8 +327,6 @@ public class CodeImpHillClimbing extends CodeImpAbstract {
 	@Override
 	public HashMap<String, Double> getEffectiveList(String action) {
 		if (sharedData.effectiveRefactorings != null) {
-			System.out.println("actions number: "
-					+ sharedData.effectiveRefactorings.size());
 			EffectiveRefactorings refactorings = sharedData.effectiveRefactorings
 					.get(action);
 			if (refactorings == null) {
