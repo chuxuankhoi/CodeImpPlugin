@@ -259,7 +259,7 @@ public final class CodeImpUtils {
 	 *            message user want to print to console
 	 */
 	public static void printLog(String log) {
-		System.out.println(System.currentTimeMillis() + " - " + log);
+//		System.out.println(System.currentTimeMillis() + " - " + log);
 	}
 
 	public static String getBody(IMethod method) throws JavaModelException {

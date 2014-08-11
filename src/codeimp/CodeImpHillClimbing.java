@@ -85,6 +85,7 @@ public class CodeImpHillClimbing extends CodeImpAbstract {
 												// increased before reaching the
 												// optimal
 
+				ScoresCollection.getActionsList().add("initialize");
 				startScore = calCurrentScore();
 				if (startScore <= 0) {
 					printLog("Plug-in cannot judge the source code.");
@@ -125,6 +126,7 @@ public class CodeImpHillClimbing extends CodeImpAbstract {
 					}
 					reachOptimal = false;
 					curAction = i;
+					ScoresCollection.getActionsList().add("get old score");
 					oldScore = calCurrentScore();
 					EffectiveRefactorings savedRefactoring = new EffectiveRefactorings(
 							actionList[i]);
@@ -179,6 +181,7 @@ public class CodeImpHillClimbing extends CodeImpAbstract {
 										null);
 							} catch (CoreException e) {
 							}
+							ScoresCollection.getActionsList().add(actionList[i]);
 							double curScore = calCurrentScore();
 							if (curScore < oldScore) {
 								savedRefactoring.put(pairs[k],
@@ -206,6 +209,7 @@ public class CodeImpHillClimbing extends CodeImpAbstract {
 					finishAction(actionList[i], bar);
 				}
 				refManager.deleteTmpClass();
+				ScoresCollection.getActionsList().add("finalizing analysis");
 				printLog("Improvement completed. Final score: "
 						+ calCurrentScore());
 				printLog("Successfull refactoring: " + successfullRefactoring
@@ -224,6 +228,7 @@ public class CodeImpHillClimbing extends CodeImpAbstract {
 	 * @param action
 	 */
 	private void finishAction(String action, final CodeImpProgressBar bar) {
+		ScoresCollection.getActionsList().add("finalizing action");
 		double curScore = calCurrentScore();
 		double impScore = startScore - curScore;
 		results.put(action, new Double(impScore));

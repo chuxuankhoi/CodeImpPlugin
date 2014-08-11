@@ -13,7 +13,8 @@ public class ScoresCollection {
 
 	// For evaluating metrics
 	private static ArrayList<ArrayList<Double>> scores = new ArrayList<ArrayList<Double>>();
-
+	private static ArrayList<String> actions = new ArrayList<String>();
+	
 	public static void initialize() {
 		if (isInitial) {
 			return;
@@ -35,6 +36,10 @@ public class ScoresCollection {
 		for(ArrayList<Double> list:scores) {
 			list.clear();
 		}
+	}
+	
+	public static ArrayList<String> getActionsList() {
+		return actions;
 	}
 
 	public static ArrayList<Double> getLCOM2ScoresList() {
@@ -84,6 +89,7 @@ public class ScoresCollection {
 			// Print each line
 			int maxLine = getMaxLine();
 			for (int i = 0; i < maxLine; i++) {
+				writer.print(actions.get(i));
 				for (int j = 0; j < scores.size(); j++) {
 					writer.print(",");
 					if (i < scores.get(j).size()) {
