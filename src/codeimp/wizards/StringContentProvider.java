@@ -13,6 +13,9 @@ public class StringContentProvider implements IStructuredContentProvider {
 	public void inputChanged(Viewer viewer, Object oldInput, Object newInput) {
 	}
 
+	/**
+	 * inputElement is input of the table and in Map<String, Double> format
+	 */
 	public Object[] getElements(Object inputElement) {
 		if (inputElement instanceof Map) {
 			int outputSize = ((Map<?, ?>) inputElement).size();

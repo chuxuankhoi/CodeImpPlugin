@@ -32,6 +32,7 @@ import codeimp.graders.test.ScoresCollection;
 import codeimp.refactoring.CodeImpRefactoring;
 import codeimp.refactoring.CodeImpRefactoringManager;
 import codeimp.refactoring.RefactoringPair;
+import codeimp.settings.Configuration;
 import codeimp.undo.CodeImpUndoManager;
 import codeimp.wizards.CodeImpProgressBar;
 
@@ -48,6 +49,8 @@ public class CodeImpHillClimbing extends CodeImpAbstract {
 	}
 
 	private Map<String, Double> results = new HashMap<String, Double>();
+	private Map<String, Double> metricWeights = new HashMap<String, Double>();
+	private Map<String, Boolean> metricsUsed = new HashMap<String, Boolean>();
 	private double startScore = 0;
 	private CancellableThread thread = null;
 	private int curAction = 0;
@@ -62,6 +65,33 @@ public class CodeImpHillClimbing extends CodeImpAbstract {
 		refManager = CodeImpRefactoringManager.getManager();
 		if (sharedData.effectiveRefactorings == null) {
 			sharedData.effectiveRefactorings = new HashMap<String, CodeImpAbstract.EffectiveRefactorings>();
+		}
+		Configuration.initialize();
+		getMetricWeights(metricWeights);
+		getMetricsUsed(metricsUsed);
+	}
+
+	private void getMetricsUsed(Map<String, Boolean> map) {
+		HashMap<String, String> used = new HashMap<String, String>();
+		Configuration.getInfo(used, "metric", "id", "used");
+
+		Iterator<Entry<String, String>> it = used.entrySet().iterator();
+		while (it.hasNext()) {
+			Map.Entry<String, String> pairs = (Map.Entry<String, String>) it
+					.next();
+			map.put(pairs.getKey(), Boolean.parseBoolean(pairs.getValue()));
+		}
+	}
+
+	private void getMetricWeights(Map<String, Double> map) {
+		HashMap<String, String> weights = new HashMap<String, String>();
+		Configuration.getInfo(weights, "metric", "id", "weight");
+
+		Iterator<Entry<String, String>> it = weights.entrySet().iterator();
+		while (it.hasNext()) {
+			Map.Entry<String, String> pairs = (Map.Entry<String, String>) it
+					.next();
+			map.put(pairs.getKey(), Double.parseDouble(pairs.getValue()));
 		}
 	}
 
@@ -181,7 +211,8 @@ public class CodeImpHillClimbing extends CodeImpAbstract {
 										null);
 							} catch (CoreException e) {
 							}
-							ScoresCollection.getActionsList().add(actionList[i]);
+							ScoresCollection.getActionsList()
+									.add(actionList[i]);
 							double curScore = calCurrentScore();
 							if (curScore < oldScore) {
 								savedRefactoring.put(pairs[k],
@@ -246,43 +277,84 @@ public class CodeImpHillClimbing extends CodeImpAbstract {
 	}
 
 	/**
-	 * @see CodeImpAbstract
-	 * Weight-sum approach
+	 * @see CodeImpAbstract Weight-sum approach
 	 */
 	protected double scoreElement(IJavaElement element) {
 		ScoresCollection.initialize();
 		IGrader grader = null;
 		double score = 0;
+		double elementScore = 0;
+		double weight = 0;
 		if (element instanceof IType) {
 			if (CodeImpUtils.isInProject((IType) element,
 					sourceFile.getProject())) {
-				grader = new LCOM2((IType) element, sourceFile);
-				ScoresCollection.getList(0).add(grader.getScore());
-				score += grader == null ? 0 : grader.getScore();
-				grader = new LCOM5((IType) element, sourceFile);
-				ScoresCollection.getList(1).add(grader.getScore());
-				score += grader == null ? 0 : grader.getScore();
-				grader = new TCC((IType) element, sourceFile);
-				ScoresCollection.getList(2).add(grader.getScore());
-				score += grader == null ? 0 : grader.getScore();
-				grader = new InheritedRatio((IType) element);
-				ScoresCollection.getList(3).add(grader.getScore() * 0.5);
-				score += grader == null ? 0 : (0.5 * grader.getScore());
-				grader = new SharedMethodsInChildren((IType) element);
-				ScoresCollection.getList(4).add(grader.getScore());
-				score += grader == null ? 0 : grader.getScore();
-				grader = new SharedMethods((IType) element);
-				ScoresCollection.getList(5).add(grader.getScore());
-				score += grader == null ? 0 : grader.getScore();
-				grader = new EmptyClass((IType) element);
-				ScoresCollection.getList(6).add(grader.getScore());
-				score += grader == null ? 0 : grader.getScore();
+				if (metricsUsed.get("LCOM2") == true) {
+					grader = new LCOM2((IType) element, sourceFile);
+					weight = metricWeights.get("LCOM2");
+					elementScore = grader == null ? 0 : grader.getScore()
+							* weight;
+					ScoresCollection.getList(0).add(elementScore);
+					score += elementScore;
+				}
+				if (metricsUsed.get("LCOM5") == true) {
+					grader = new LCOM5((IType) element, sourceFile);
+					weight = metricWeights.get("LCOM5");
+					elementScore = grader == null ? 0 : grader.getScore()
+							* weight;
+					ScoresCollection.getList(1).add(elementScore);
+					score += elementScore;
+				}
+				if (metricsUsed.get("TCC") == true) {
+					grader = new TCC((IType) element, sourceFile);
+					weight = metricWeights.get("TCC");
+					elementScore = grader == null ? 0 : grader.getScore()
+							* weight;
+					ScoresCollection.getList(2).add(elementScore);
+					score += elementScore;
+				}
+				if (metricsUsed.get("InheritedRatio") == true) {
+					grader = new InheritedRatio((IType) element);
+					weight = metricWeights.get("InheritedRatio");
+					elementScore = grader == null ? 0 : grader.getScore()
+							* weight;
+					ScoresCollection.getList(3).add(elementScore);
+					score += elementScore;
+				}
+				if (metricsUsed.get("SharedMethodsInChildren") == true) {
+					grader = new SharedMethodsInChildren((IType) element);
+					weight = metricWeights.get("SharedMethodsInChildren");
+					elementScore = grader == null ? 0 : grader.getScore()
+							* weight;
+					ScoresCollection.getList(4).add(elementScore);
+					score += elementScore;
+				}
+				if (metricsUsed.get("SharedMethods") == true) {
+					grader = new SharedMethods((IType) element);
+					weight = metricWeights.get("SharedMethods");
+					elementScore = grader == null ? 0 : grader.getScore()
+							* weight;
+					ScoresCollection.getList(5).add(elementScore);
+					score += elementScore;
+				}
+				if (metricsUsed.get("EmptyClass") == true) {
+					grader = new EmptyClass((IType) element);
+					weight = metricWeights.get("EmptyClass");
+					elementScore = grader == null ? 0 : grader.getScore()
+							* weight;
+					ScoresCollection.getList(6).add(elementScore);
+					score += elementScore;
+				}
 			}
 		} else if (element instanceof IMethod) {
-			if (CodeImpUtils.isInProject((IMethod) element,
-					sourceFile.getProject())) {
-				grader = new LongMethod((IMethod) element);
-				score += grader == null ? 0 : grader.getScore();
+			if (metricsUsed.get("LongMethod") == true) {
+				if (CodeImpUtils.isInProject((IMethod) element,
+						sourceFile.getProject())) {
+					grader = new LongMethod((IMethod) element);
+					weight = metricWeights.get("LongMethod");
+					elementScore = grader == null ? 0 : grader.getScore()
+							* weight;
+					score += elementScore;
+				}
 			}
 		}
 
