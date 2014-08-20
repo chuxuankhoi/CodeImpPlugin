@@ -34,6 +34,7 @@ import org.w3c.dom.NodeList;
  */
 @SuppressWarnings("restriction")
 public class Configuration {
+	
 	/** The class attribute */
 	private static final String ATTRIBUTE_CLASS = "class"; //$NON-NLS-1$
 
@@ -43,11 +44,12 @@ public class Configuration {
 	/** The refactoring contributions extension point */
 	private static final String REFACTORING_CONTRIBUTIONS_EXTENSION_POINT = "refactoringContributions"; //$NON-NLS-1$
 
-	private static final String url = "dropins/config.xml";
+	private static final String URL = "dropins/config.xml";
+	
 	private static Document doc;
 
 	public static void initialize() {
-		File fXmlFile = new File(url);
+		File fXmlFile = new File(URL);
 		if (!fXmlFile.exists()) {
 			DocumentBuilderFactory dbFactory = DocumentBuilderFactory
 					.newInstance();
@@ -394,7 +396,7 @@ public class Configuration {
 	}
 
 	public static void saveChanged() {
-		File fXmlFile = new File(url);
+		File fXmlFile = new File(URL);
 		if (doc != null) {
 			try {
 				writeToFile(fXmlFile, doc);
@@ -410,7 +412,6 @@ public class Configuration {
 		if(doc == null) {
 			return;
 		}
-		System.out.println("Getting info of: " + elementName + "/" + keyName + " for " + valueName);
 		NodeList nodes = doc.getElementsByTagName(elementName);
 		for(int i = 0; i < nodes.getLength(); i++) {
 			Node node = nodes.item(i);
@@ -431,6 +432,15 @@ public class Configuration {
 				map.put(key, value);
 			}
 				
+		}
+	}
+
+	public static boolean isRefactoringDefault(String action) {
+		String strIsCustom = getInfoInElement("refactoring", action, "isCustom");
+		if(strIsCustom == null || strIsCustom.equals("true")) {
+			return false;
+		} else {
+			return true;
 		}
 	}
 }

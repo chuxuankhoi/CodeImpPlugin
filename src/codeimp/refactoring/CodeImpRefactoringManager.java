@@ -82,8 +82,6 @@ import org.eclipse.ltk.core.refactoring.participants.MoveProcessor;
 import org.eclipse.ltk.core.refactoring.participants.MoveRefactoring;
 import org.eclipse.ltk.core.refactoring.participants.ProcessorBasedRefactoring;
 import org.eclipse.ltk.core.refactoring.participants.RefactoringProcessor;
-import org.eclipse.ltk.internal.core.refactoring.Messages;
-import org.eclipse.ltk.internal.core.refactoring.RefactoringCoreMessages;
 import org.eclipse.ltk.internal.core.refactoring.RefactoringCorePlugin;
 import org.eclipse.ltk.ui.refactoring.RefactoringWizard;
 import org.eclipse.ui.editors.text.TextFileDocumentProvider;
@@ -138,8 +136,6 @@ public class CodeImpRefactoringManager {
 		for (int index = 0; index < elements.length; index++) {
 			final IConfigurationElement element = elements[index];
 			final String attributeId = element.getAttribute(ATTRIBUTE_ID);
-			final String point = RefactoringCore.ID_PLUGIN
-					+ "." + REFACTORING_CONTRIBUTIONS_EXTENSION_POINT; //$NON-NLS-1$
 			if (attributeId != null && !"".equals(attributeId)) { //$NON-NLS-1$
 				final String className = element.getAttribute(ATTRIBUTE_CLASS);
 				if (className != null && !"".equals(className)) { //$NON-NLS-1$
@@ -148,26 +144,12 @@ public class CodeImpRefactoringManager {
 								.createExecutableExtension(ATTRIBUTE_CLASS);
 						if (implementation instanceof RefactoringContribution) {
 							out.add(attributeId);
-						} else
-							RefactoringCorePlugin
-									.logErrorMessage(Messages
-											.format(RefactoringCoreMessages.RefactoringCorePlugin_creation_error,
-													new String[] { point,
-															attributeId }));
+						}
 					} catch (CoreException exception) {
 						RefactoringCorePlugin.log(exception);
 					}
-				} else
-					RefactoringCorePlugin
-							.logErrorMessage(Messages
-									.format(RefactoringCoreMessages.RefactoringCorePlugin_missing_class_attribute,
-											new String[] { point, attributeId,
-													ATTRIBUTE_CLASS }));
-			} else
-				RefactoringCorePlugin
-						.logErrorMessage(Messages
-								.format(RefactoringCoreMessages.RefactoringCorePlugin_missing_attribute,
-										new String[] { point, ATTRIBUTE_ID }));
+				}
+			}
 		}
 	}
 

@@ -30,13 +30,6 @@
                tooltip="Remove code smell">
          </action>
          <action
-               class="codeimp.graders.test.TestActionDelegation"
-               id="CodeImpPlugin.testgrader"
-               label="Test"
-               menubarPath="CodeImpPlugin.menu/content"
-               style="push">
-         </action>
-         <action
                class="codeimp.settings.CustomizeActionDelegation"
                id="CodeImpPlugin.settings"
                label="Customize"

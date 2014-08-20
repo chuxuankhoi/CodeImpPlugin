@@ -9,7 +9,6 @@ import java.util.Map;
 import java.util.Map.Entry;
 import org.eclipse.core.resources.IFile;
 import org.eclipse.core.runtime.CoreException;
-import org.eclipse.core.runtime.IProgressMonitor;
 import org.eclipse.core.runtime.NullProgressMonitor;
 import org.eclipse.jdt.core.IJavaElement;
 import org.eclipse.jdt.core.IMethod;
@@ -30,6 +29,7 @@ import codeimp.graders.SharedMethodsInChildren;
 import codeimp.graders.TCC;
 import codeimp.graders.test.ScoresCollection;
 import codeimp.refactoring.CodeImpRefactoring;
+import codeimp.refactoring.CodeImpSingleRefactoring;
 import codeimp.refactoring.CodeImpRefactoringManager;
 import codeimp.refactoring.RefactoringPair;
 import codeimp.settings.Configuration;
@@ -195,7 +195,7 @@ public class CodeImpHillClimbing extends CodeImpAbstract {
 										+ " pair of "
 										+ (String) pairs[k].element);
 							}
-							CodeImpRefactoring refactoring = new CodeImpRefactoring(
+							CodeImpRefactoring refactoring = getRefactoring(
 									pairs[k], sourceFile);
 							totalRefactoring++;
 							boolean success = false;
@@ -222,11 +222,7 @@ public class CodeImpHillClimbing extends CodeImpAbstract {
 								continue;
 							} else {
 								if (success) {
-									IProgressMonitor undoMonitor = new NullProgressMonitor();
-									try {
-										undoMan.performUndo(null, undoMonitor);
-									} catch (CoreException e) {
-									}
+									refactoring.performUndo(undoMan);
 								}
 								if (curScore > oldScore && reachOptimal) {
 									printLog("Current score is greater than the old score");
@@ -251,6 +247,16 @@ public class CodeImpHillClimbing extends CodeImpAbstract {
 
 		};
 		thread.start();
+	}
+
+	protected CodeImpRefactoring getRefactoring(
+			RefactoringPair startingPair, IFile sourceFile) {
+		if(Configuration.isRefactoringDefault(startingPair.action)) {
+			return new CodeImpSingleRefactoring(startingPair, sourceFile);
+		} else {
+			// TODO create CodeImpRefactoring instance based on action's definition
+		}
+		return null;
 	}
 
 	/**

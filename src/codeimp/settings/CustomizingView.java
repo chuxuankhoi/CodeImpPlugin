@@ -300,6 +300,8 @@ public class CustomizingView extends Dialog {
 			@Override
 			protected void performButtonPushed() {
 				setMetricTableData();
+				buttonMetricSave.setEnabled(false);
+				buttonMetricCancel.setEnabled(false);
 			}
 		});
 		buttonMetricCancel.setEnabled(false);
@@ -312,6 +314,8 @@ public class CustomizingView extends Dialog {
 			@Override
 			protected void performButtonPushed() {
 				saveMetricsChanges();
+				buttonMetricSave.setEnabled(false);
+				buttonMetricCancel.setEnabled(false);
 			}
 		});
 		buttonMetricSave.setEnabled(false);

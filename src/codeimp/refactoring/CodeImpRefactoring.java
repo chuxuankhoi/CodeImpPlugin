@@ -1,6 +1,3 @@
-/**
- * 
- */
 package codeimp.refactoring;
 
 import org.eclipse.core.resources.IFile;
@@ -8,7 +5,6 @@ import org.eclipse.core.runtime.CoreException;
 import org.eclipse.core.runtime.IProgressMonitor;
 import org.eclipse.core.runtime.OperationCanceledException;
 import org.eclipse.core.runtime.SubProgressMonitor;
-import org.eclipse.jdt.core.IJavaElement;
 import org.eclipse.ltk.core.refactoring.Change;
 import org.eclipse.ltk.core.refactoring.IUndoManager;
 import org.eclipse.ltk.core.refactoring.Refactoring;
@@ -16,52 +12,39 @@ import org.eclipse.ltk.core.refactoring.RefactoringStatus;
 
 import codeimp.CodeImpUtils;
 
-/**
- * @author chuxuankhoi
- * 
- */
-public class CodeImpRefactoring {
+public abstract class CodeImpRefactoring {
 
-	private void printLog(String log) {
+	protected IFile sourceFile;
+
+	/**
+	 * Perform the refactoring following the specific circumstance
+	 * 
+	 * @param undoMan
+	 *            the manager storing all refactoring actions
+	 * @param monitor
+	 *            to monitor the progress of refactoring
+	 * @return
+	 * @throws Exception
+	 */
+	public abstract boolean process(IUndoManager undoMan,
+			IProgressMonitor monitor) throws Exception;
+
+	/**
+	 * This perform undo based on the number of refactoring action the instance
+	 * performed. Thus, it should be called right after calling process()
+	 * function
+	 * 
+	 * @param undoMan
+	 *            the manager storing all refactoring actions
+	 */
+	public abstract void performUndo(IUndoManager undoMan);
+
+	protected void printLog(String log) {
 		CodeImpUtils.printLog(this.getClass().getName() + " - " + log);
 	}
 
-	private RefactoringPair pair;
-	private IFile sourceFile;
-
-	/**
-	 * @param element
-	 * @param action
-	 * @param project
-	 */
-	public CodeImpRefactoring(IJavaElement element, String action, IFile file) {
-		this.pair = new RefactoringPair();
-		this.pair.element = element;
-		this.pair.action = action;
-		this.sourceFile = file;
-	}
-
-	public CodeImpRefactoring(RefactoringPair refactoringPair, IFile file) {
-		this.pair = refactoringPair;
-		this.sourceFile = file;
-	}
-
-	/**
-	 * 
-	 * @param monitor
-	 * @param element
-	 * @param action
-	 * @return 
-	 * @throws CoreException
-	 */
-	public boolean process(IUndoManager undoMan, IProgressMonitor monitor)
-			throws Exception {
-		// Run the generated actions
-		return refactorElement(pair, undoMan, monitor);
-	}
-
-	private boolean refactorElement(RefactoringPair pair, IUndoManager undoMan,
-			IProgressMonitor monitor){
+	protected boolean refactorElement(RefactoringPair pair,
+			IUndoManager undoMan, IProgressMonitor monitor) {
 		if (pair == null) {
 			throw new OperationCanceledException();
 		}
@@ -76,8 +59,7 @@ public class CodeImpRefactoring {
 		// Get Refactoring instance for the item
 		Refactoring refactoring = null;
 		try {
-			refactoring = refactoringManager.getRefactoring(pair,
-					sourceFile);
+			refactoring = refactoringManager.getRefactoring(pair, sourceFile);
 		} catch (CoreException e) {
 			e.printStackTrace();
 		}
@@ -87,8 +69,8 @@ public class CodeImpRefactoring {
 			return false;
 		}
 		monitor.worked(1);
-		
-		// Check the availability of the refactoring		
+
+		// Check the availability of the refactoring
 		RefactoringStatus status = new RefactoringStatus();
 		try {
 			status = refactoring.checkInitialConditions(monitor);
@@ -106,15 +88,18 @@ public class CodeImpRefactoring {
 			e.printStackTrace();
 			throw new OperationCanceledException();
 		}
-		if(status.hasWarning()) {
-			printLog("WARNING - " + status.getMessageMatchingSeverity(RefactoringStatus.WARNING));
+		if (status.hasWarning()) {
+			printLog("WARNING - "
+					+ status.getMessageMatchingSeverity(RefactoringStatus.WARNING));
 		}
 		if (status.hasFatalError()) {
-			printLog("FATAL - " + status.getMessageMatchingSeverity(RefactoringStatus.FATAL));
+			printLog("FATAL - "
+					+ status.getMessageMatchingSeverity(RefactoringStatus.FATAL));
 			throw new OperationCanceledException();
 		}
-		if(status.hasError()) {
-			printLog("ERROR - " + status.getMessageMatchingSeverity(RefactoringStatus.ERROR));
+		if (status.hasError()) {
+			printLog("ERROR - "
+					+ status.getMessageMatchingSeverity(RefactoringStatus.ERROR));
 			throw new OperationCanceledException();
 		}
 		monitor.worked(3);
@@ -126,7 +111,7 @@ public class CodeImpRefactoring {
 			e.printStackTrace();
 			return false;
 		}
-		monitor.worked(4);		
+		monitor.worked(4);
 		// Start actions of the refactoring
 		undoMan.aboutToPerformChange(change);
 		Change fUndoChange;
@@ -136,7 +121,7 @@ public class CodeImpRefactoring {
 			e.printStackTrace();
 			return false;
 		}
-		monitor.worked(5);		
+		monitor.worked(5);
 		// Add the changes to the undo manager to record
 		change.dispose();
 		if (fUndoChange != null) {
@@ -148,4 +133,9 @@ public class CodeImpRefactoring {
 		monitor.worked(6);
 		return true;
 	}
+
+	public CodeImpRefactoring() {
+		super();
+	}
+
 }

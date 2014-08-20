@@ -37,10 +37,6 @@ public class CodeImpActionDelegate implements IWorkbenchWindowActionDelegate {
 	 */
 	@Override
 	public void run(IAction action) {
-		MessageDialog.openInformation(window.getShell(),
-				"Have not completed yet",
-				"CodeImpHillClimbing is under construction");
-
 		// Check Java perspective and editor
 		if (!isPerspective("Java")) {
 			MessageDialog.openInformation(window.getShell(),
