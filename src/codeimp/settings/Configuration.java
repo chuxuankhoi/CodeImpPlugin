@@ -286,11 +286,28 @@ public class Configuration {
 	 */
 	public static void addElement(String parentType, String id, String name,
 			String value) {
-		// TODO add new element to a specific element
+		if(doc == null) {
+			return;
+		}
+		Element parent = findElement(parentType, id);
+		if(parent == null) {
+			return;
+		}
+		Element child = doc.createElement(name);
+		child.setTextContent(value);
+		parent.appendChild(child);
 	}
 
 	public static void removeElement(String name, String id) {
-		// TODO delete the element
+		if(doc == null) {
+			return;
+		}
+		Element element = findElement(name, id);
+		if(element == null) {
+			return;
+		}
+		Node parent = element.getParentNode();
+		parent.removeChild(element);
 	}
 
 	/**
