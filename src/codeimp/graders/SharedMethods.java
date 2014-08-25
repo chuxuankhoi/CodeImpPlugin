@@ -1,9 +1,12 @@
 package codeimp.graders;
 
+import org.eclipse.core.resources.IProject;
 import org.eclipse.core.runtime.NullProgressMonitor;
 import org.eclipse.jdt.core.IType;
 import org.eclipse.jdt.core.ITypeHierarchy;
 import org.eclipse.jdt.core.JavaModelException;
+
+import codeimp.CodeImpUtils;
 
 public class SharedMethods extends SharedMethodsAbstract implements IGrader {
 	
@@ -20,7 +23,6 @@ public class SharedMethods extends SharedMethodsAbstract implements IGrader {
 			e.printStackTrace();
 		}
 		if(brothers == null) {
-			System.out.println("Cannot get the brothers");
 			return 0;
 		} else {
 			return getScoreOfGroup(brothers);
@@ -30,7 +32,8 @@ public class SharedMethods extends SharedMethodsAbstract implements IGrader {
 	private IType[] getBrother(IType type) throws JavaModelException {
 		ITypeHierarchy hierachy = type.newTypeHierarchy(new NullProgressMonitor());
 		IType superClass = hierachy.getSuperclass(type);
-		if(superClass == null) {
+		IProject project = type.getJavaProject().getProject();
+		if(superClass == null || !CodeImpUtils.isInProject(superClass, project)) {
 			return null;
 		}
 		hierachy = superClass.newTypeHierarchy(new NullProgressMonitor());
