@@ -27,12 +27,12 @@ import codeimp.graders.LongMethod;
 import codeimp.graders.SharedMethods;
 import codeimp.graders.SharedMethodsInChildren;
 import codeimp.graders.TCC;
-import codeimp.graders.test.ScoresCollection;
 import codeimp.refactoring.CodeImpRefactoring;
 import codeimp.refactoring.CodeImpSingleRefactoring;
 import codeimp.refactoring.CodeImpRefactoringManager;
 import codeimp.refactoring.RefactoringPair;
 import codeimp.settings.Configuration;
+import codeimp.test.ScoresCollection;
 import codeimp.undo.CodeImpUndoManager;
 import codeimp.wizards.CodeImpProgressBar;
 
@@ -43,6 +43,28 @@ import codeimp.wizards.CodeImpProgressBar;
  * 
  */
 public class CodeImpHillClimbing extends CodeImpAbstract {
+	
+	private abstract class CancellableThread extends Thread {
+		protected CodeImpProgressBar bar = null; // major progress bar to
+													// reflect the progress of
+													// running
+		protected boolean isCancelled = false; // determine that the thread is
+												// cancelled or not. If the
+												// thread is cancelled, the
+												// function run() should be stop
+												// immediately
+
+		public CancellableThread(CodeImpProgressBar progressBar) {
+			bar = progressBar;
+			isCancelled = false;
+		}
+
+		public abstract void run();
+
+		public void cancel() {
+			isCancelled = true;
+		}
+	}
 
 	private class SharedClass {
 		private HashMap<String, EffectiveRefactorings> effectiveRefactorings = null;
@@ -168,7 +190,7 @@ public class CodeImpHillClimbing extends CodeImpAbstract {
 							return;
 						}
 						RefactoringPair[] pairs = refManager
-								.getRefactoringPairs(rootElements[j],
+								.getDefaultRefactoringPairs(rootElements[j],
 										actionList[i]);
 						if (pairs == null) {
 							continue;
@@ -373,7 +395,7 @@ public class CodeImpHillClimbing extends CodeImpAbstract {
 	@Override
 	public String getPrintedResults() {
 		String ret = "";
-		Map<String, Double> sortedResults = CodeImpUtils.sortByComparator(
+		Map<String, Double> sortedResults = CodeImpUtils.sortStringDoubleMap(
 				results, CodeImpUtils.DESC);
 		Iterator<Entry<String, Double>> it = sortedResults.entrySet()
 				.iterator();

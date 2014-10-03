@@ -1,4 +1,4 @@
-package codeimp.graders.test;
+package codeimp.test;
 
 import org.eclipse.jface.wizard.Wizard;
 import org.eclipse.jface.wizard.WizardPage;

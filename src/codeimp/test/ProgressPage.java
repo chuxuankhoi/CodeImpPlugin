@@ -1,4 +1,4 @@
-package codeimp.graders.test;
+package codeimp.test;
 
 import org.eclipse.core.resources.IFile;
 import org.eclipse.core.resources.IProject;

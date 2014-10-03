@@ -1,4 +1,4 @@
-package codeimp.graders.test;
+package codeimp.test;
 
 import java.io.FileNotFoundException;
 import java.io.PrintWriter;

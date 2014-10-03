@@ -94,15 +94,15 @@ import codeimp.CodeImpUtils;
  */
 @SuppressWarnings("restriction")
 public class CodeImpRefactoringManager {
-	
+
 	/** The class attribute */
-	private static final String ATTRIBUTE_CLASS= "class"; //$NON-NLS-1$
+	private static final String ATTRIBUTE_CLASS = "class"; //$NON-NLS-1$
 
 	/** The id attribute */
-	private static final String ATTRIBUTE_ID= "id"; //$NON-NLS-1$
+	private static final String ATTRIBUTE_ID = "id"; //$NON-NLS-1$
 
 	/** The refactoring contributions extension point */
-	private static final String REFACTORING_CONTRIBUTIONS_EXTENSION_POINT= "refactoringContributions"; //$NON-NLS-1$
+	private static final String REFACTORING_CONTRIBUTIONS_EXTENSION_POINT = "refactoringContributions"; //$NON-NLS-1$
 
 	private static CodeImpRefactoringManager manager = null;
 	private static IType tmpClass = null;
@@ -183,7 +183,7 @@ public class CodeImpRefactoringManager {
 	 * @return list of refactoring pair which describes all required items for
 	 *         the refactoring action
 	 */
-	public RefactoringPair[] getRefactoringPairs(IJavaElement rootElement,
+	public RefactoringPair[] getDefaultRefactoringPairs(IJavaElement rootElement,
 			String action) {
 		RefactoringPair[] pairs = null;
 		try {
@@ -740,7 +740,7 @@ public class CodeImpRefactoringManager {
 	 * @return
 	 * @throws CoreException
 	 */
-	public Refactoring getRefactoring(RefactoringPair pair, IFile sourceFile)
+	public Refactoring getRefactoring(RefactoringPair pair)
 			throws CoreException {
 		if (pair.element == null || pair.action == null) {
 			System.out.println("No element or no action.");
@@ -1135,25 +1135,27 @@ public class CodeImpRefactoringManager {
 			JavaRefactoringDescriptor descriptor, RefactoringStatus status)
 			throws CoreException {
 		ExtractClassDescriptor extractClassDescriptor = (ExtractClassDescriptor) descriptor;
-		extractClassDescriptor.setClassName(((IJavaElement) pair.element)
-				.getElementName() + "Class");
-		extractClassDescriptor.setCreateTopLevel(true);
-		IType rootType = (IType) ((IJavaElement) pair.element).getParent();
-		extractClassDescriptor.setType(rootType);
-		if (pair.element instanceof IField) {
-			ExtractClassDescriptor.Field[] fields = ExtractClassDescriptor
-					.getFields(rootType);
-			for (int i = 0; i < fields.length; i++) {
-				if (fields[i].getFieldName().equals(
-						((IField) pair.element).getElementName())) {
-					fields[i].setCreateField(true);
-				} else {
-					fields[i].setCreateField(false);
+		if (pair.addition == null) {
+			extractClassDescriptor.setClassName(((IJavaElement) pair.element)
+					.getElementName() + "Class");
+			extractClassDescriptor.setCreateTopLevel(true);
+			IType rootType = (IType) ((IJavaElement) pair.element).getParent();
+			extractClassDescriptor.setType(rootType);
+			if (pair.element instanceof IField) {
+				ExtractClassDescriptor.Field[] fields = ExtractClassDescriptor
+						.getFields(rootType);
+				for (int i = 0; i < fields.length; i++) {
+					if (fields[i].getFieldName().equals(
+							((IField) pair.element).getElementName())) {
+						fields[i].setCreateField(true);
+					} else {
+						fields[i].setCreateField(false);
+					}
 				}
+				extractClassDescriptor.setFields(fields);
+			} else {
+				return null;
 			}
-			extractClassDescriptor.setFields(fields);
-		} else {
-			return null;
 		}
 		return new ExtractClassRefactoring(extractClassDescriptor);
 	}
@@ -1237,7 +1239,7 @@ public class CodeImpRefactoringManager {
 		case IJavaRefactorings.EXTRACT_INTERFACE:
 		case IJavaRefactorings.EXTRACT_LOCAL_VARIABLE:
 		case IJavaRefactorings.EXTRACT_METHOD:
-			refactoring = getRefactoring(pair, (IFile) pair.resource);
+			refactoring = getRefactoring(pair);
 			wizard = new ExtractMethodWizard(
 					(ExtractMethodRefactoring) refactoring);
 			break;
