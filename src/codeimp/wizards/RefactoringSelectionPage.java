@@ -76,7 +76,7 @@ public class RefactoringSelectionPage extends WizardPage {
 					return;
 				}
 				// Get top MAXIMUM_ACTIONS actions to push to the table
-				results = CodeImpUtils.sortByComparator(results,
+				results = CodeImpUtils.sortStringDoubleMap(results,
 						CodeImpUtils.DESC);
 				String[] sortedActions = new String[results.keySet().size()];
 				sortedActions = results.keySet().toArray(sortedActions);

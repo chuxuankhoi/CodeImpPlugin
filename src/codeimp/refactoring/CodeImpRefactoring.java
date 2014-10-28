@@ -59,7 +59,7 @@ public abstract class CodeImpRefactoring {
 		// Get Refactoring instance for the item
 		Refactoring refactoring = null;
 		try {
-			refactoring = refactoringManager.getRefactoring(pair, sourceFile);
+			refactoring = refactoringManager.getRefactoring(pair);
 		} catch (CoreException e) {
 			e.printStackTrace();
 		}

@@ -15,6 +15,7 @@ import javax.xml.transform.TransformerFactoryConfigurationError;
 import javax.xml.transform.dom.DOMSource;
 import javax.xml.transform.stream.StreamResult;
 
+import org.eclipse.core.resources.IResource;
 import org.eclipse.core.runtime.CoreException;
 import org.eclipse.core.runtime.IConfigurationElement;
 import org.eclipse.core.runtime.Platform;
@@ -26,6 +27,10 @@ import org.w3c.dom.Element;
 import org.w3c.dom.Node;
 import org.w3c.dom.NodeList;
 
+import codeimp.refactoring.AtomicRefactoring;
+import codeimp.refactoring.IPerformable;
+import codeimp.refactoring.Scheduler;
+
 /**
  * Restriction: pairs of name and id of all elements are unique
  * 
@@ -34,7 +39,7 @@ import org.w3c.dom.NodeList;
  */
 @SuppressWarnings("restriction")
 public class Configuration {
-	
+
 	/** The class attribute */
 	private static final String ATTRIBUTE_CLASS = "class"; //$NON-NLS-1$
 
@@ -45,7 +50,7 @@ public class Configuration {
 	private static final String REFACTORING_CONTRIBUTIONS_EXTENSION_POINT = "refactoringContributions"; //$NON-NLS-1$
 
 	private static final String URL = "dropins/config.xml";
-	
+
 	private static Document doc;
 
 	public static void initialize() {
@@ -286,11 +291,11 @@ public class Configuration {
 	 */
 	public static void addElement(String parentType, String id, String name,
 			String value) {
-		if(doc == null) {
+		if (doc == null) {
 			return;
 		}
 		Element parent = findElement(parentType, id);
-		if(parent == null) {
+		if (parent == null) {
 			return;
 		}
 		Element child = doc.createElement(name);
@@ -299,11 +304,11 @@ public class Configuration {
 	}
 
 	public static void removeElement(String name, String id) {
-		if(doc == null) {
+		if (doc == null) {
 			return;
 		}
 		Element element = findElement(name, id);
-		if(element == null) {
+		if (element == null) {
 			return;
 		}
 		Node parent = element.getParentNode();
@@ -424,40 +429,75 @@ public class Configuration {
 		}
 	}
 
-	public static void getInfo(HashMap<String, String> map,
-			String elementName, String keyName, String valueName) {
-		if(doc == null) {
+	public static void getInfo(HashMap<String, String> map, String elementName,
+			String keyName, String valueName) {
+		if (doc == null) {
 			return;
 		}
 		NodeList nodes = doc.getElementsByTagName(elementName);
-		for(int i = 0; i < nodes.getLength(); i++) {
+		for (int i = 0; i < nodes.getLength(); i++) {
 			Node node = nodes.item(i);
-			if(node.getNodeType() == Node.ELEMENT_NODE) {
+			if (node.getNodeType() == Node.ELEMENT_NODE) {
 				Element element = (Element) node;
 				String key = "";
-				if(keyName.equals("id")) {
+				if (keyName.equals("id")) {
 					key = element.getAttribute("id");
 				} else {
-					key = element.getElementsByTagName(keyName).item(0).getTextContent();
+					key = element.getElementsByTagName(keyName).item(0)
+							.getTextContent();
 				}
 				String value = "";
-				if(valueName.equals("id")) {
+				if (valueName.equals("id")) {
 					value = element.getAttribute("id");
 				} else {
-					value = element.getElementsByTagName(valueName).item(0).getTextContent();
+					value = element.getElementsByTagName(valueName).item(0)
+							.getTextContent();
 				}
 				map.put(key, value);
 			}
-				
+
 		}
 	}
 
 	public static boolean isRefactoringDefault(String action) {
 		String strIsCustom = getInfoInElement("refactoring", action, "isCustom");
-		if(strIsCustom == null || strIsCustom.equals("true")) {
+		if (strIsCustom == null || strIsCustom.equals("true")) {
 			return false;
 		} else {
 			return true;
 		}
+	}
+
+	public static IPerformable getRefactoring(Object object,
+			String action, IResource resource) {
+		// TODO Get default additions' value
+		if (!isRefactoringDefault(action)) {
+			String[] additions = null;
+			ArrayList<String> additionList = new ArrayList<String>();
+			Element parent = findElement("refactoring", action);
+			if (parent == null) {
+				new AtomicRefactoring(object, action, resource, additions);
+			}
+			NodeList nodes = parent.getElementsByTagName("addition");
+			for (int i = 0; i < nodes.getLength(); i++) {
+				Node node = nodes.item(i);
+				if (node.getNodeType() == Node.ELEMENT_NODE) {
+					additionList.add(((Element) node).getAttribute("id"));
+					additionList.add(node.getTextContent());
+				}
+			}
+			additions = new String[additionList.size()];
+			additions = additionList.toArray(additions);
+			return createScheduler(object, action, resource, additions);
+		} else {
+			return new AtomicRefactoring(object, action, resource);
+		}
+
+	}
+
+	private static Scheduler createScheduler(Object object, String action,
+			IResource resource, String[] additions) {
+		// TODO Auto-generated method stub
+		return null;
 	}
 }

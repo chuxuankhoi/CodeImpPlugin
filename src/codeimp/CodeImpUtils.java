@@ -259,11 +259,11 @@ public final class CodeImpUtils {
 	 *            message user want to print to console
 	 */
 	public static void printLog(String log) {
-//		System.out.println(System.currentTimeMillis() + " - " + log);
+		 System.out.println(System.currentTimeMillis() + " - " + log);
 	}
 
 	public static String getBody(IMethod method) throws JavaModelException {
-		if(method == null) {
+		if (method == null) {
 			return null;
 		}
 		String body = method.getSource();
@@ -379,7 +379,7 @@ public final class CodeImpUtils {
 	public static boolean ASC = true;
 	public static boolean DESC = false;
 
-	public static Map<String, Double> sortByComparator(
+	public static Map<String, Double> sortStringDoubleMap(
 			Map<String, Double> unsortMap, final boolean order) {
 
 		List<Entry<String, Double>> list = new LinkedList<Entry<String, Double>>(
@@ -407,6 +407,17 @@ public final class CodeImpUtils {
 		return sortedMap;
 	}
 
+	public static <T> ArrayList<T> sortArrayListByComparator(ArrayList<T> unsortedList,
+			final IComparator<T> comp) {
+		ArrayList<T> tmpList = new ArrayList<T>(unsortedList);
+		Collections.sort(tmpList, new Comparator<T>() {
+			public int compare(T o1, T o2) {
+				return comp.compare(o1, o2);
+			}
+		});
+		return tmpList;
+	}
+
 	@SuppressWarnings("rawtypes")
 	public static void printMap(Map<?, ?> mp) {
 		Iterator<?> it = mp.entrySet().iterator();
@@ -421,9 +432,9 @@ public final class CodeImpUtils {
 			System.out.println("Item " + i + ": " + array[i].getElementName());
 		}
 	}
-	
+
 	public static void printStringArrayList(ArrayList<String> input) {
-		for(String str:input) {
+		for (String str : input) {
 			System.out.println(str);
 		}
 	}

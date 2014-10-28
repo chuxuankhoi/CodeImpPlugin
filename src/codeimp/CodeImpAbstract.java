@@ -17,28 +17,6 @@ import codeimp.wizards.CodeImpProgressBar;
 
 public abstract class CodeImpAbstract {
 
-	protected abstract class CancellableThread extends Thread {
-		protected CodeImpProgressBar bar = null; // major progress bar to
-													// reflect the progress of
-													// running
-		protected boolean isCancelled = false; // determine that the thread is
-												// cancelled or not. If the
-												// thread is cancelled, the
-												// function run() should be stop
-												// immediately
-
-		CancellableThread(CodeImpProgressBar progressBar) {
-			bar = progressBar;
-			isCancelled = false;
-		}
-
-		public abstract void run();
-
-		public void cancel() {
-			isCancelled = true;
-		}
-	}
-
 	/**
 	 * Store the effective items for the given refactoring actions
 	 * 

@@ -36,6 +36,13 @@
                menubarPath="CodeImpPlugin.menu/content"
                style="push">
          </action>
+         <action
+               class="codeimp.test.TestActionDelegation"
+               id="CodeImpPlugin.test"
+               label="Test"
+               menubarPath="CodeImpPlugin.menu/content"
+               style="push">
+         </action>
       </actionSet>
    </extension>
 
